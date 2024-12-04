@@ -105,17 +105,20 @@ else:
 
             # Visualize Shot Locations on Field
             st.subheader("Shot Locations on Field")
-            pitch_fig = px.scatter(
-                shots,
-                x="x",
-                y="y",
-                color="outcome_color",
-                labels={"x": "Field Length", "y": "Field Width", "outcome_color": "Shot Outcome"},
-                title="Shots Taken",
-                color_discrete_map=outcome_color_map,
-                hover_data=["shot_outcome", "shot_statsbomb_xg"]
-            )
-            st.plotly_chart(pitch_fig, use_container_width=True)
+            try:
+                pitch_fig = px.scatter(
+                    shots,
+                    x="x",
+                    y="y",
+                    color="outcome_color",
+                    labels={"x": "Field Length", "y": "Field Width", "outcome_color": "Shot Outcome"},
+                    title="Shots Taken",
+                    color_discrete_map=outcome_color_map,
+                    hover_data=["shot_outcome", "shot_statsbomb_xg"]
+                )
+                st.plotly_chart(pitch_fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error rendering field scatter plot: {e}")
 
             # Visualize Shot Outcomes on Goal
             st.subheader("Shot Outcomes on Goal")
@@ -124,14 +127,17 @@ else:
             goal_shots["goal_y"] = extract_coordinates(goal_shots["shot_end_location"], 1)
             goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
 
-            goal_fig = px.scatter(
-                goal_shots,
-                x="goal_x",
-                y="goal_y",
-                color="outcome_color",
-                labels={"goal_x": "Goal Width", "goal_y": "Goal Height", "outcome_color": "Shot Outcome"},
-                title="Shot Outcomes on Goal",
-                color_discrete_map=outcome_color_map,
-                hover_data=["shot_outcome", "shot_statsbomb_xg"]
-            )
-            st.plotly_chart(goal_fig, use_container_width=True)
+            try:
+                goal_fig = px.scatter(
+                    goal_shots,
+                    x="goal_x",
+                    y="goal_y",
+                    color="outcome_color",
+                    labels={"goal_x": "Goal Width", "goal_y": "Goal Height", "outcome_color": "Shot Outcome"},
+                    title="Shot Outcomes on Goal",
+                    color_discrete_map=outcome_color_map,
+                    hover_data=["shot_outcome", "shot_statsbomb_xg"]
+                )
+                st.plotly_chart(goal_fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error rendering goal scatter plot: {e}")
