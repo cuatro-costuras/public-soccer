@@ -42,18 +42,18 @@ def load_team_events(team_name, match_id):
     return events[(events["team"] == team_name) & (events["match_id"] == match_id)]
 
 # Visualization Functions
-def plot_field_shots(events, goal_center):
+def plot_field_shots(events, attacking_goal, defending_goal):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
     pitch.draw(ax=ax)
 
     for _, row in events.iterrows():
-        # Match the color between field and goal visualizations
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-        if goal_center:
-            ax.plot([row["x"], goal_center[0]], [row["y"], goal_center[1]], color=color, linestyle="dotted", lw=1.5)
-
+    
+    ax.text(attacking_goal[0], attacking_goal[1], "Attacking Goal", fontsize=12, color="white", ha="center")
+    ax.text(defending_goal[0], defending_goal[1], "Defending Goal", fontsize=12, color="white", ha="center")
+    
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
         Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
@@ -119,16 +119,18 @@ if selected_league:
             st.markdown("### Select Team to Analyze")
             col1, col2 = st.columns(2)
             selected_team = None
-            goal_center = None
+            attacking_goal = None
+            defending_goal = None
             if col1.button(home_team):
                 selected_team = home_team
-                goal_center = (105, 34)  # Center of the attacking goal
+                attacking_goal, defending_goal = (105, 34), (0, 34)
             if col2.button(away_team):
                 selected_team = away_team
-                goal_center = (0, 34)  # Center of the defending goal
+                attacking_goal, defending_goal = (0, 34), (105, 34)
 
             if selected_team:
                 team_events = load_team_events(selected_team, match_id)
+
                 st.markdown(f"### Analyzing: {selected_team}")
 
                 # Performance Metrics
@@ -136,7 +138,7 @@ if selected_league:
                 total_shots = len(team_events)
                 shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
                 goals = team_events[team_events["outcome"] == "goal"].shape[0]
-                expected_goals = team_events[team_events["outcome"] == "goal"].shape[0] * 0.35  # Placeholder for xG calculation
+                expected_goals = goals * 0.35  # Placeholder for xG calculation
                 shot_conversion_rate = f"{(goals / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
 
                 col1.metric("Total Shots", total_shots)
@@ -148,7 +150,7 @@ if selected_league:
                 # Visualizations
                 col1, col2 = st.columns(2)
                 with col1:
-                    field_fig = plot_field_shots(team_events, goal_center)
+                    field_fig = plot_field_shots(team_events, attacking_goal, defending_goal)
                     st.pyplot(field_fig)
                 with col2:
                     goal_fig = plot_goal_shots(team_events)
