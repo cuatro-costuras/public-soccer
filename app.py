@@ -80,14 +80,14 @@ if competition_id and season_id and match_id:
         # Filter events for the selected team
         team_data = events[events["team"] == team]
 
-        if "type" not in team_data.columns or "shot_outcome" not in team_data.columns:
-            st.error("The events data does not contain required columns for analysis (e.g., 'type', 'shot_outcome').")
+        if "type" not in team_data.columns or "shot_outcome" not in team_data.columns or "location" not in team_data.columns:
+            st.error("The events data does not contain required columns for analysis (e.g., 'type', 'shot_outcome', 'location').")
         else:
             # Shooting metrics
             shots_taken = len(team_data[team_data["type"] == "Shot"])
             shots_on_target = len(team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "On Target")])
             goals = len(team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "Goal")])
-            xg = team_data[team_data["type"] == "Shot"]["xg"].sum() if "xg" in team_data.columns else 0
+            xg = team_data[team_data["type"] == "Shot"]["shot_statsbomb_xg"].sum() if "shot_statsbomb_xg" in team_data.columns else 0
             conversion_rate = goals / shots_taken * 100 if shots_taken > 0 else 0
 
             # Display shooting metrics
@@ -110,11 +110,13 @@ if competition_id and season_id and match_id:
             # Add shot dots
             shot_data = team_data[team_data["type"] == "Shot"]
             for _, shot in shot_data.iterrows():
-                color = (
-                    "green" if shot["shot_outcome"] == "Goal" else 
-                    "yellow" if shot["shot_outcome"] == "On Target" else "red"
-                )
-                pitch.scatter(shot["x"], shot["y"], color=color, s=100, ax=ax)
+                if pd.notnull(shot["location"]) and len(shot["location"]) == 2:
+                    x, y = shot["location"]  # Extract x and y from location
+                    color = (
+                        "green" if shot["shot_outcome"] == "Goal" else 
+                        "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                    )
+                    pitch.scatter(x, y, color=color, s=100, ax=ax)
 
             st.pyplot(fig)
 
@@ -123,10 +125,12 @@ if competition_id and season_id and match_id:
             fig_goal, ax_goal = goal.draw(figsize=(10, 5))
 
             for _, shot in shot_data.iterrows():
-                color = (
-                    "green" if shot["shot_outcome"] == "Goal" else 
-                    "yellow" if shot["shot_outcome"] == "On Target" else "red"
-                )
-                goal.scatter(shot["end_x"], shot["end_y"], color=color, s=100, ax=ax_goal)
+                if pd.notnull(shot["shot_end_location"]) and len(shot["shot_end_location"]) == 2:
+                    end_x, end_y = shot["shot_end_location"]  # Extract x and y from shot_end_location
+                    color = (
+                        "green" if shot["shot_outcome"] == "Goal" else 
+                        "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                    )
+                    goal.scatter(end_x, end_y, color=color, s=100, ax=ax_goal)
 
             st.pyplot(fig_goal)
