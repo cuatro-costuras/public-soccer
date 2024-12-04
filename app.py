@@ -1,157 +1,120 @@
 import streamlit as st
 import pandas as pd
-from mplsoccer import VerticalPitch
+from mplsoccer import Pitch
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 
-# Mock data-loading functions for matches and events
-def load_competitions():
-    return pd.DataFrame({
-        "competition": ["Premier League", "La Liga", "Bundesliga"],
-        "seasons": [["2022/2023", "2023/2024"], ["2022/2023"], ["2023/2024"]],
-    })
+# Load data functions (replace these with your actual data loading methods)
+@st.cache_data
+def load_matches():
+    # Replace with your data loading logic
+    matches = pd.read_csv("matches.csv")
+    return matches
 
-def load_matches(competition, season):
-    matches = {
-        "Premier League_2022/2023": [
-            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool", "score": "3-1"},
-            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal", "score": "2-2"}
-        ],
-        "La Liga_2022/2023": [
-            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid", "score": "2-0"},
-            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla", "score": "1-1"}
-        ],
-        "Bundesliga_2023/2024": [
-            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig", "score": "4-2"},
-            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen", "score": "3-3"}
-        ],
-    }
-    key = f"{competition}_{season}"
-    return pd.DataFrame(matches.get(key, []))
-
+@st.cache_data
 def load_events():
-    return pd.DataFrame({
-        "match_id": [1, 1, 1, 2, 2, 3, 3],
-        "team": ["Manchester City", "Manchester City", "Liverpool", "Chelsea", "Arsenal", "Real Madrid", "Atletico Madrid"],
-        "type": ["Shot", "Shot", "Shot", "Shot", "Shot", "Shot", "Shot"],
-        "outcome": ["goal", "saved", "missed", "goal", "missed", "saved", "missed"],
-        "x": [30, 50, 70, 40, 60, 20, 80],
-        "y": [20, 40, 60, 30, 70, 10, 90],
-        "goal_x": [2.5, 4.5, 7, 3, 6, 5, 8],
-        "goal_y": [1, 1.5, 3, 0.5, 2, 2.5, 1],
-    })
+    # Replace with your data loading logic
+    events = pd.read_csv("events.csv")
+    return events
 
-# Updated function: Dynamic filtering for team events
+# Filter events by team and match
 def load_team_events(team_name, match_id):
     events = load_events()
     team_events = events[(events["team"] == team_name) & (events["match_id"] == match_id)]
+    if team_events.empty:
+        st.error(f"No events found for {team_name} in match {match_id}. Check event data.")
     return team_events
 
-# Remaining visualizations and metrics
+# Plot field shots
 def plot_field_shots(events):
-    fig, ax = plt.subplots(figsize=(12, 8))
-    pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
-    pitch.draw(ax=ax)
-    for _, row in events.iterrows():
-        color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
-        ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-    legend_patches = [
-        Rectangle((0, 0), 1, 1, color="green", label="Goal"),
-        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
-        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
-    ]
-    ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
-    ax.set_title("Shot Location(s) On Field", fontsize=14)
+    pitch = Pitch(pitch_type="statsbomb", orientation="horizontal", line_color="black", figsize=(10, 6))
+    fig, ax = pitch.draw()
+
+    for _, shot in events.iterrows():
+        x, y = shot["location"][0], shot["location"][1]
+        color = "green" if shot["outcome"] == "goal" else "blue" if shot["outcome"] == "saved" else "red"
+        pitch.scatter(x, y, color=color, ax=ax, s=100)
+
     return fig
 
+# Plot goal shots
 def plot_goal_shots(events):
-    fig, ax = plt.subplots(figsize=(8, 4))
-    goal_width, goal_height = 7.32, 2.44
-    ax.plot([0, goal_width], [0, 0], color="black", lw=2)
-    ax.plot([0, goal_width], [goal_height, goal_height], color="black", lw=2)
-    ax.plot([0, 0], [0, goal_height], color="black", lw=2)
-    ax.plot([goal_width, goal_width], [0, goal_height], color="black", lw=2)
-    ax.set_xlim(-1, goal_width + 1)
-    ax.set_ylim(-1, goal_height + 1)
-    for _, row in events.iterrows():
-        color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
-        ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
-    legend_patches = [
-        Rectangle((0, 0), 1, 1, color="green", label="Goal"),
-        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
-        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
-    ]
-    ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
-    ax.set_title("Shot Location(s) On Goal", fontsize=14)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.set_xlim(0, 8)
+    ax.set_ylim(0, 3)
+    ax.set_aspect("equal")
+
+    # Draw the goal
+    ax.plot([0, 8], [0, 0], color="black", lw=2)
+    ax.plot([0, 0], [0, 3], color="black", lw=2)
+    ax.plot([8, 8], [0, 3], color="black", lw=2)
+    ax.plot([0, 8], [3, 3], color="black", lw=2)
+
+    for _, shot in events.iterrows():
+        x, y = shot["goal_x"], shot["goal_y"]
+        color = "green" if shot["outcome"] == "goal" else "blue" if shot["outcome"] == "saved" else "red"
+        ax.scatter(x, y, color=color, s=100)
+
     return fig
 
-# Streamlit App
-st.title("Soccer Match Analysis")
+# Streamlit app layout
+st.set_page_config(layout="wide", page_title="Soccer Match Analysis")
 
-# Sidebar: Select League, Season, and Match
+# Sidebar for competition and match selection
 st.sidebar.title("Match Analysis")
-competitions_df = load_competitions()
-league_options = competitions_df["competition"].tolist()
-selected_league = st.sidebar.selectbox("Select League", league_options)
+matches = load_matches()
 
-if selected_league:
-    season_options = competitions_df[competitions_df["competition"] == selected_league]["seasons"].values[0]
-    selected_season = st.sidebar.selectbox("Select Season", season_options)
+# Competition and season dropdown
+competition = st.sidebar.selectbox("Select Competition", matches["competition"].unique())
+season = st.sidebar.selectbox("Select Season", matches[matches["competition"] == competition]["season"].unique())
 
-    matches_df = load_matches(selected_league, selected_season)
-    if not matches_df.empty:
-        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
-        selected_match = st.sidebar.selectbox("Select Match", match_labels)
+# Match selection
+selected_matches = matches[(matches["competition"] == competition) & (matches["season"] == season)]
+match_options = selected_matches[["home_team", "away_team", "match_id"]].apply(
+    lambda x: f"{x['home_team']} vs {x['away_team']} (ID: {x['match_id']})", axis=1
+)
+selected_match = st.sidebar.selectbox("Select Match", match_options)
+match_id = int(selected_match.split("ID: ")[1])
 
-        if selected_match:
-            selected_row = matches_df.loc[matches_df.apply(
-                lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
-            home_team = selected_row["home_team"]
-            away_team = selected_row["away_team"]
-            match_id = selected_row["match_id"]
+# Teams selection
+match_row = selected_matches[selected_matches["match_id"] == match_id].iloc[0]
+home_team, away_team = match_row["home_team"], match_row["away_team"]
+col1, col2 = st.columns(2)
+with col1:
+    if st.button(home_team):
+        selected_team = home_team
+with col2:
+    if st.button(away_team):
+        selected_team = away_team
 
-            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {selected_row['score']}")
+# Display match score
+st.title(f"Match: {home_team} vs {away_team}")
+st.subheader(f"Score: {match_row['home_score']} - {match_row['away_score']}")
 
-            # Team Selection
-            st.markdown("### Select Team to Analyze")
-            col1, col2 = st.columns(2)
-            selected_team = None
-            if col1.button(home_team):
-                selected_team = home_team
-            if col2.button(away_team):
-                selected_team = away_team
+# Team-specific analysis
+if "selected_team" in locals():
+    st.header(f"Analysis for {selected_team}")
+    team_events = load_team_events(selected_team, match_id)
 
-            if selected_team:
-                team_events = load_team_events(selected_team, match_id)
-                st.markdown(f"### Analyzing: {selected_team}")
+    # Calculate performance metrics
+    total_shots = len(team_events[team_events["type"] == "Shot"])
+    shots_on_target = team_events[
+        (team_events["type"] == "Shot") & (team_events["outcome"].isin(["goal", "saved"]))
+    ].shape[0]
+    goals = team_events[(team_events["type"] == "Shot") & (team_events["outcome"] == "goal")].shape[0]
+    expected_goals = team_events["shot_statsbomb_xg"].sum() if "shot_statsbomb_xg" in team_events else 0.0
+    shot_conversion_rate = f"{(goals / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
 
-                # Performance Metrics
-                col1, col2, col3, col4, col5 = st.columns(5)
-                total_shots = len(team_events)
-                shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
-                shot_conversion_rate = f"{(team_events[team_events['outcome'] == 'goal'].shape[0] / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
-                goals = team_events[team_events["outcome"] == "goal"].shape[0]
-                expected_goals = 1.25  # Placeholder
+    # Performance metrics
+    st.columns(5)[0].metric("Total Shots", total_shots)
+    st.columns(5)[1].metric("Shots on Target", shots_on_target)
+    st.columns(5)[2].metric("Shot Conversion Rate", shot_conversion_rate)
+    st.columns(5)[3].metric("Goals", goals)
+    st.columns(5)[4].metric("Expected Goals (xG)", f"{expected_goals:.2f}")
 
-                col1.metric("Total Shots", total_shots)
-                col2.metric("Shots on Target", shots_on_target)
-                col3.metric("Shot Conversion Rate", shot_conversion_rate)
-                col4.metric("Goals", goals)
-                col5.metric("Expected Goals (xG)", expected_goals)
+    # Shot locations on field
+    st.subheader("Shot Location(s) On Field")
+    st.pyplot(plot_field_shots(team_events))
 
-                # Visualizations
-                st.markdown("### Shot Location(s) On Field")
-                field_fig = plot_field_shots(team_events)
-                st.pyplot(field_fig)
-
-                st.markdown("### Shot Location(s) On Goal")
-                goal_fig = plot_goal_shots(team_events)
-                st.pyplot(goal_fig)
-            else:
-                st.warning("Please select a team to analyze.")
-        else:
-            st.warning("Please select a match.")
-    else:
-        st.warning("No matches available for the selected season.")
-else:
-    st.warning("Please select a league.")
+    # Shot locations on goal
+    st.subheader("Shot Location(s) On Goal")
+    st.pyplot(plot_goal_shots(team_events))
