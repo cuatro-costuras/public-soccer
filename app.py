@@ -31,36 +31,55 @@ def extract_coordinates(location_column, index):
     return location_column.apply(lambda loc: loc[index] if isinstance(loc, list) and len(loc) > index else np.nan)
 
 # Helper Function for Drawing Field
-def draw_soccer_field():
+def draw_soccer_field(shots):
     fig = go.Figure()
-    # Field Outline
+
+    # Draw the field
     fig.add_shape(type="rect", x0=0, x1=120, y0=0, y1=80, line=dict(color="black", width=2))
-    # Center Circle
     fig.add_shape(type="circle", x0=60 - 9.15, y0=40 - 9.15, x1=60 + 9.15, y1=40 + 9.15, line=dict(color="black", width=2))
-    # Goals
     fig.add_shape(type="rect", x0=0, x1=6, y0=30, y1=50, line=dict(color="black", width=2))
     fig.add_shape(type="rect", x0=114, x1=120, y0=30, y1=50, line=dict(color="black", width=2))
-    # Add Axis Labels
+
+    # Add shots
+    fig.add_trace(go.Scatter(
+        x=shots["x"], y=shots["y"],
+        mode="markers",
+        marker=dict(size=10, color=shots["outcome_color"]),
+        text=shots["shot_outcome"],
+        hoverinfo="text"
+    ))
+
     fig.update_layout(
         xaxis=dict(range=[0, 120], title="Field Length (meters)"),
         yaxis=dict(range=[0, 80], title="Field Width (meters)"),
         height=600,
         showlegend=False,
-        plot_bgcolor="white",
+        plot_bgcolor="white"
     )
     return fig
 
 # Helper Function for Drawing Goal
-def draw_soccer_goal():
+def draw_soccer_goal(shots):
     fig = go.Figure()
-    # Goal Area
+
+    # Draw the goal area
     fig.add_shape(type="rect", x0=-10, x1=10, y0=0, y1=8, line=dict(color="black", width=2))
+
+    # Add shots
+    fig.add_trace(go.Scatter(
+        x=shots["goal_x"], y=shots["goal_y"],
+        mode="markers",
+        marker=dict(size=10, color=shots["outcome_color"]),
+        text=shots["shot_outcome"],
+        hoverinfo="text"
+    ))
+
     fig.update_layout(
         xaxis=dict(range=[-10, 10], title="Goal Width (meters)"),
         yaxis=dict(range=[0, 8], title="Goal Height (meters)"),
         height=400,
         showlegend=False,
-        plot_bgcolor="white",
+        plot_bgcolor="white"
     )
     return fig
 
@@ -136,14 +155,7 @@ else:
 
             # Visualize Shot Locations on Field
             st.subheader("Shot Locations on Field")
-            field_fig = draw_soccer_field()
-            field_fig.add_trace(go.Scatter(
-                x=shots["x"], y=shots["y"],
-                mode="markers",
-                marker=dict(size=10, color=shots["outcome_color"]),
-                text=shots["shot_outcome"],
-                hoverinfo="text"
-            ))
+            field_fig = draw_soccer_field(shots)
             st.plotly_chart(field_fig, use_container_width=True)
 
             # Visualize Shot Outcomes on Goal
@@ -153,12 +165,5 @@ else:
             goal_shots["goal_y"] = extract_coordinates(goal_shots["shot_end_location"], 1)
             goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
 
-            goal_fig = draw_soccer_goal()
-            goal_fig.add_trace(go.Scatter(
-                x=goal_shots["goal_x"], y=goal_shots["goal_y"],
-                mode="markers",
-                marker=dict(size=10, color=goal_shots["outcome_color"]),
-                text=goal_shots["shot_outcome"],
-                hoverinfo="text"
-            ))
+            goal_fig = draw_soccer_goal(goal_shots)
             st.plotly_chart(goal_fig, use_container_width=True)
