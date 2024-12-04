@@ -65,6 +65,9 @@ if competition_id and season_id and match_id:
     if events.empty:
         st.error("No events found for the selected match.")
     else:
+        # Debug: Display the available columns
+        st.write("**Available Columns in Events Data:**", events.columns.tolist())
+
         # Step 3: Toggle between team stats
         team_selector = st.radio("Select Team", ["Home Team", "Away Team"])
         if team_selector == "Home Team":
@@ -77,50 +80,53 @@ if competition_id and season_id and match_id:
         # Filter events for the selected team
         team_data = events[events["team"] == team]
 
-        # Shooting metrics
-        shots_taken = len(team_data[team_data["type"] == "Shot"])
-        shots_on_target = len(team_data[(team_data["type"] == "Shot") & (team_data["outcome"] == "On Target")])
-        goals = len(team_data[(team_data["type"] == "Shot") & (team_data["outcome"] == "Goal")])
-        xg = team_data[team_data["type"] == "Shot"]["xg"].sum()
-        conversion_rate = goals / shots_taken * 100 if shots_taken > 0 else 0
+        if "type" not in team_data.columns or "shot_outcome" not in team_data.columns:
+            st.error("The events data does not contain required columns for analysis (e.g., 'type', 'shot_outcome').")
+        else:
+            # Shooting metrics
+            shots_taken = len(team_data[team_data["type"] == "Shot"])
+            shots_on_target = len(team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "On Target")])
+            goals = len(team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "Goal")])
+            xg = team_data[team_data["type"] == "Shot"]["xg"].sum() if "xg" in team_data.columns else 0
+            conversion_rate = goals / shots_taken * 100 if shots_taken > 0 else 0
 
-        # Display shooting metrics
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Shots Taken", shots_taken)
-        col2.metric("Shots on Target", shots_on_target)
-        col3.metric("Shot Conversion Rate (%)", f"{conversion_rate:.2f}")
-        col4.metric("Goals", goals)
-        col5.metric("Expected Goals (xG)", f"{xg:.2f}")
+            # Display shooting metrics
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Shots Taken", shots_taken)
+            col2.metric("Shots on Target", shots_on_target)
+            col3.metric("Shot Conversion Rate (%)", f"{conversion_rate:.2f}")
+            col4.metric("Goals", goals)
+            col5.metric("Expected Goals (xG)", f"{xg:.2f}")
 
-        # Match date
-        match_date = matches[matches["match_id"] == match_id]["match_date"].values[0]
-        st.write(f"**Match Date:** {match_date}")
+            # Match date
+            match_date = matches[matches["match_id"] == match_id]["match_date"].values[0]
+            st.write(f"**Match Date:** {match_date}")
 
-        # Shooting visuals
-        st.write("### Shooting Locations")
-        pitch = VerticalPitch(pitch_type="statsbomb", half=True)
-        fig, ax = pitch.draw(figsize=(10, 7))
+            # Shooting visuals
+            st.write("### Shooting Locations")
+            pitch = VerticalPitch(pitch_type="statsbomb", half=True)
+            fig, ax = pitch.draw(figsize=(10, 7))
 
-        # Add shot dots
-        shot_data = team_data[team_data["type"] == "Shot"]
-        for _, shot in shot_data.iterrows():
-            color = (
-                "green" if shot["outcome"] == "Goal" else 
-                "yellow" if shot["outcome"] == "On Target" else "red"
-            )
-            pitch.scatter(shot["x"], shot["y"], color=color, s=100, ax=ax)
+            # Add shot dots
+            shot_data = team_data[team_data["type"] == "Shot"]
+            for _, shot in shot_data.iterrows():
+                color = (
+                    "green" if shot["shot_outcome"] == "Goal" else 
+                    "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                )
+                pitch.scatter(shot["x"], shot["y"], color=color, s=100, ax=ax)
 
-        st.pyplot(fig)
+            st.pyplot(fig)
 
-        st.write("### Shot Outcomes in Goal")
-        goal = VerticalPitch(pitch_type="statsbomb", half=True, goal_type='line')
-        fig_goal, ax_goal = goal.draw(figsize=(10, 5))
+            st.write("### Shot Outcomes in Goal")
+            goal = VerticalPitch(pitch_type="statsbomb", half=True, goal_type='line')
+            fig_goal, ax_goal = goal.draw(figsize=(10, 5))
 
-        for _, shot in shot_data.iterrows():
-            color = (
-                "green" if shot["outcome"] == "Goal" else 
-                "yellow" if shot["outcome"] == "On Target" else "red"
-            )
-            goal.scatter(shot["end_x"], shot["end_y"], color=color, s=100, ax=ax_goal)
+            for _, shot in shot_data.iterrows():
+                color = (
+                    "green" if shot["shot_outcome"] == "Goal" else 
+                    "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                )
+                goal.scatter(shot["end_x"], shot["end_y"], color=color, s=100, ax=ax_goal)
 
-        st.pyplot(fig_goal)
+            st.pyplot(fig_goal)
