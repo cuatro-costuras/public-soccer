@@ -41,7 +41,7 @@ def plot_field_shots(events):
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-    ax.legend(["Goal", "Saved", "Missed"], loc='upper left')
+    ax.legend(['Goal', 'Saved', 'Missed'], loc='upper left', fontsize=10, markerscale=1.5)
     ax.set_title("Shot Location(s) On Field", fontsize=14)
     return fig
 
@@ -58,26 +58,27 @@ def plot_goal_shots(events):
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
-    ax.legend(["Goal", "Saved", "Missed"], loc='upper left')
+    ax.legend(['Goal', 'Saved', 'Missed'], loc='upper left', fontsize=10, markerscale=1.5)
     ax.set_title("Shot Location(s) On Goal", fontsize=14)
     return fig
 
 # Streamlit App
 st.title("Soccer Match Analysis")
 
-# Step 1: Select League and Season
+# Sidebar: Step 1 - Select League and Season
+st.sidebar.title("Match Analysis")
 competitions_df = load_competitions()
 league_options = competitions_df["competition"].tolist()
-selected_league = st.selectbox("Select League", league_options)
+selected_league = st.sidebar.selectbox("Select League", league_options)
 
 if selected_league:
     season_options = competitions_df[competitions_df["competition"] == selected_league]["seasons"].values[0]
-    selected_season = st.selectbox("Select Season", season_options)
+    selected_season = st.sidebar.selectbox("Select Season", season_options)
 
     # Step 2: Select Match
     matches_df = load_matches(selected_league, selected_season)
     match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
-    selected_match = st.selectbox("Select Match", match_labels)
+    selected_match = st.sidebar.selectbox("Select Match", match_labels)
 
     if selected_match:
         selected_row = matches_df.loc[matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
