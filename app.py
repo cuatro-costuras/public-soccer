@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-import plotly.express as px
+import plotly.graph_objects as go
 from statsbombpy import sb
 
 # Streamlit Page Config
@@ -25,6 +25,44 @@ def load_events(match_id):
     except Exception as e:
         st.error(f"Error loading events: {e}")
         return pd.DataFrame()
+
+# Helper Function for Coordinate Extraction
+def extract_coordinates(location_column, index):
+    return location_column.apply(lambda loc: loc[index] if isinstance(loc, list) and len(loc) > index else np.nan)
+
+# Helper Function for Drawing Field
+def draw_soccer_field():
+    fig = go.Figure()
+    # Field Outline
+    fig.add_shape(type="rect", x0=0, x1=120, y0=0, y1=80, line=dict(color="black", width=2))
+    # Center Circle
+    fig.add_shape(type="circle", x0=60 - 9.15, y0=40 - 9.15, x1=60 + 9.15, y1=40 + 9.15, line=dict(color="black", width=2))
+    # Goals
+    fig.add_shape(type="rect", x0=0, x1=6, y0=30, y1=50, line=dict(color="black", width=2))
+    fig.add_shape(type="rect", x0=114, x1=120, y0=30, y1=50, line=dict(color="black", width=2))
+    # Add Axis Labels
+    fig.update_layout(
+        xaxis=dict(range=[0, 120], title="Field Length (meters)"),
+        yaxis=dict(range=[0, 80], title="Field Width (meters)"),
+        height=600,
+        showlegend=False,
+        plot_bgcolor="white",
+    )
+    return fig
+
+# Helper Function for Drawing Goal
+def draw_soccer_goal():
+    fig = go.Figure()
+    # Goal Area
+    fig.add_shape(type="rect", x0=-10, x1=10, y0=0, y1=8, line=dict(color="black", width=2))
+    fig.update_layout(
+        xaxis=dict(range=[-10, 10], title="Goal Width (meters)"),
+        yaxis=dict(range=[0, 8], title="Goal Height (meters)"),
+        height=400,
+        showlegend=False,
+        plot_bgcolor="white",
+    )
+    return fig
 
 # Main App
 st.sidebar.title("Soccer Team Shooting Report")
@@ -68,9 +106,6 @@ else:
             st.warning("No shots found for this team in the selected match.")
         else:
             # Process and Validate Shot Data
-            def extract_coordinates(location_column, index):
-                return location_column.apply(lambda loc: loc[index] if isinstance(loc, list) and len(loc) > index else np.nan)
-
             shots["x"] = extract_coordinates(shots["location"], 0)
             shots["y"] = extract_coordinates(shots["location"], 1)
             shots = shots.dropna(subset=["x", "y"])  # Remove invalid coordinates
@@ -83,10 +118,6 @@ else:
                 "Blocked": "orange"
             }
             shots["outcome_color"] = shots["shot_outcome"].map(outcome_color_map).fillna("grey")
-
-            # Validate `outcome_color`
-            valid_colors = {"green", "yellow", "red", "orange", "grey"}
-            shots = shots[shots["outcome_color"].isin(valid_colors)]
 
             # Calculate Metrics
             shots_taken = len(shots)
@@ -105,20 +136,15 @@ else:
 
             # Visualize Shot Locations on Field
             st.subheader("Shot Locations on Field")
-            try:
-                pitch_fig = px.scatter(
-                    shots,
-                    x="x",
-                    y="y",
-                    color="outcome_color",
-                    labels={"x": "Field Length", "y": "Field Width", "outcome_color": "Shot Outcome"},
-                    title="Shots Taken",
-                    color_discrete_map=outcome_color_map,
-                    hover_data=["shot_outcome", "shot_statsbomb_xg"]
-                )
-                st.plotly_chart(pitch_fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error rendering field scatter plot: {e}")
+            field_fig = draw_soccer_field()
+            field_fig.add_trace(go.Scatter(
+                x=shots["x"], y=shots["y"],
+                mode="markers",
+                marker=dict(size=10, color=shots["outcome_color"]),
+                text=shots["shot_outcome"],
+                hoverinfo="text"
+            ))
+            st.plotly_chart(field_fig, use_container_width=True)
 
             # Visualize Shot Outcomes on Goal
             st.subheader("Shot Outcomes on Goal")
@@ -127,17 +153,12 @@ else:
             goal_shots["goal_y"] = extract_coordinates(goal_shots["shot_end_location"], 1)
             goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
 
-            try:
-                goal_fig = px.scatter(
-                    goal_shots,
-                    x="goal_x",
-                    y="goal_y",
-                    color="outcome_color",
-                    labels={"goal_x": "Goal Width", "goal_y": "Goal Height", "outcome_color": "Shot Outcome"},
-                    title="Shot Outcomes on Goal",
-                    color_discrete_map=outcome_color_map,
-                    hover_data=["shot_outcome", "shot_statsbomb_xg"]
-                )
-                st.plotly_chart(goal_fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error rendering goal scatter plot: {e}")
+            goal_fig = draw_soccer_goal()
+            goal_fig.add_trace(go.Scatter(
+                x=goal_shots["goal_x"], y=goal_shots["goal_y"],
+                mode="markers",
+                marker=dict(size=10, color=goal_shots["outcome_color"]),
+                text=goal_shots["shot_outcome"],
+                hoverinfo="text"
+            ))
+            st.plotly_chart(goal_fig, use_container_width=True)
