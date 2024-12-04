@@ -33,11 +33,13 @@ st.title("Soccer Player Shooting Report")
 # Step 1: Select competition and season
 competitions = sb.competitions()
 competition_options = competitions[["competition_id", "competition_name"]].drop_duplicates()
-competition_id = st.selectbox("Select Competition", competition_options["competition_id"].unique())
+competition_id = st.selectbox("Select Competition", competition_options["competition_id"].unique(), 
+                              format_func=lambda x: competition_options[competition_options["competition_id"] == x]["competition_name"].values[0])
 
 if competition_id:
     seasons = competitions[competitions["competition_id"] == competition_id][["season_id", "season_name"]]
-    season_id = st.selectbox("Select Season", seasons["season_id"].unique())
+    season_id = st.selectbox("Select Season", seasons["season_id"].unique(), 
+                             format_func=lambda x: seasons[seasons["season_id"] == x]["season_name"].values[0])
 
     if season_id:
         # Step 2: Select match
@@ -70,56 +72,70 @@ if competition_id:
 
                     # Display roster
                     try:
-                        # Extract players and positions
-                        roster = events[events["team"] == team][["player", "position_name"]].drop_duplicates()
-                        st.table(roster)
-                    except KeyError:
-                        st.error("The required columns for roster are not available in the events data.")
+                        # Extract players and positions from events DataFrame
+                        if "player_name" in events.columns and "position_name" in events.columns:
+                            roster = events[events["team"] == team][["player_name", "position_name"]].drop_duplicates()
+                            st.table(roster)
+                        else:
+                            st.error("The events data does not contain 'player_name' or 'position_name' columns.")
+                    except Exception as e:
+                        st.error(f"Error extracting roster: {e}")
 
                     # Step 4: Select a player
-                    selected_player = st.selectbox("Select a Player", roster["player"].unique())
+                    if "player_name" in events.columns:
+                        selected_player = st.selectbox("Select a Player", roster["player_name"].unique())
+                    else:
+                        selected_player = None
+                        st.error("No players available for selection.")
+
+                    # Step 5: Display player shooting report
                     if selected_player:
-                        player_events = events[events["player"] == selected_player]
+                        player_data = events[events["player_name"] == selected_player]
+                        st.subheader(f"Shooting Report for {selected_player}")
+                        
+                        # Date of match
+                        match_date = matches[matches["match_id"] == match_id]["match_date"].values[0]
+                        st.write(f"**Match Date:** {match_date}")
 
-                        # Step 5: Player profile
-                        st.subheader(f"{selected_player} - Shooting Report")
-                        date = matches[matches["match_id"] == match_id]["match_date"].values[0]
-                        st.write(f"Match Date: {date}")
-
-                        shots = player_events[player_events["type"] == "Shot"]
-                        goals = shots[shots["shot_outcome"] == "Goal"]
-                        shots_on_target = shots[shots["shot_outcome"].isin(["Goal", "Saved"])]
-                        expected_goals = shots["shot_statsbomb_xg"].sum()
-
-                        metrics = {
-                            "Shots Taken": len(shots),
-                            "Shots on Target": len(shots_on_target),
-                            "Shot Conversion Rate (%)": (len(goals) / len(shots) * 100) if len(shots) > 0 else 0,
-                            "Goals per Game": len(goals),
-                            "Expected Goals (xG)": expected_goals,
-                        }
+                        # Shooting metrics
+                        shots_taken = len(player_data[player_data["type"] == "Shot"])
+                        shots_on_target = len(player_data[(player_data["type"] == "Shot") & (player_data["outcome"] == "On Target")])
+                        goals = len(player_data[(player_data["type"] == "Shot") & (player_data["outcome"] == "Goal")])
+                        xg = player_data[player_data["type"] == "Shot"]["xg"].sum()
+                        conversion_rate = goals / shots_taken * 100 if shots_taken > 0 else 0
 
                         col1, col2, col3, col4, col5 = st.columns(5)
-                        col1.metric("Shots Taken", metrics["Shots Taken"])
-                        col2.metric("Shots on Target", metrics["Shots on Target"])
-                        col3.metric("Conversion Rate (%)", f"{metrics['Shot Conversion Rate (%)']:.2f}")
-                        col4.metric("Goals per Game", metrics["Goals per Game"])
-                        col5.metric("Expected Goals (xG)", f"{metrics['Expected Goals (xG)']:.2f}")
+                        col1.metric("Shots Taken", shots_taken)
+                        col2.metric("Shots on Target", shots_on_target)
+                        col3.metric("Shot Conversion Rate (%)", f"{conversion_rate:.2f}")
+                        col4.metric("Goals per Game", f"{goals:.2f}")
+                        col5.metric("Expected Goals (xG)", f"{xg:.2f}")
 
-                        # Step 6: Visualizations
-                        st.write("### Shooting Visualizations")
+                        # Step 6: Shooting visuals
+                        st.write("### Shooting Locations")
+                        pitch = VerticalPitch(pitch_type="statsbomb", half=True)
+                        fig, ax = pitch.draw(figsize=(10, 7))
 
-                        # Soccer pitch plot
-                        pitch = VerticalPitch(pitch_type='statsbomb', half=True)
-                        fig, ax = pitch.draw(figsize=(10, 6))
-                        for _, shot in shots.iterrows():
-                            color = "green" if shot["shot_outcome"] == "Goal" else ("yellow" if shot["shot_outcome"] == "Saved" else "red")
-                            pitch.scatter(shot["location"][0], shot["location"][1], ax=ax, color=color, s=100)
+                        # Add shot dots
+                        shot_data = player_data[player_data["type"] == "Shot"]
+                        for _, shot in shot_data.iterrows():
+                            color = (
+                                "green" if shot["outcome"] == "Goal" else 
+                                "yellow" if shot["outcome"] == "On Target" else "red"
+                            )
+                            pitch.scatter(shot["x"], shot["y"], color=color, s=100, ax=ax)
+
                         st.pyplot(fig)
 
-                        # Soccer goal plot
-                        fig, ax = pitch.draw_goal(figsize=(10, 6))
-                        for _, shot in shots.iterrows():
-                            color = "green" if shot["shot_outcome"] == "Goal" else ("yellow" if shot["shot_outcome"] == "Saved" else "red")
-                            pitch.scatter(shot["shot_end_location"][0], shot["shot_end_location"][1], ax=ax, color=color, s=100)
-                        st.pyplot(fig)
+                        st.write("### Shot Outcomes in Goal")
+                        goal = VerticalPitch(pitch_type="statsbomb", half=True, goal_type='line')
+                        fig_goal, ax_goal = goal.draw(figsize=(10, 5))
+
+                        for _, shot in shot_data.iterrows():
+                            color = (
+                                "green" if shot["outcome"] == "Goal" else 
+                                "yellow" if shot["outcome"] == "On Target" else "red"
+                            )
+                            goal.scatter(shot["end_x"], shot["end_y"], color=color, s=100, ax=ax_goal)
+
+                        st.pyplot(fig_goal)
