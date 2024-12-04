@@ -46,8 +46,9 @@ def plot_field_shots(events, goal_center):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
     pitch.draw(ax=ax)
-    
+
     for _, row in events.iterrows():
+        # Match the color between field and goal visualizations
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
         if goal_center:
@@ -73,6 +74,7 @@ def plot_goal_shots(events):
     ax.set_ylim(-1, goal_height + 1)
     
     for _, row in events.iterrows():
+        # Determine dot color based on shot outcome
         if 0 <= row["goal_x"] <= goal_width and 0 <= row["goal_y"] <= goal_height:
             color = "green" if row["outcome"] == "goal" else "blue"
         else:
@@ -120,10 +122,10 @@ if selected_league:
             goal_center = None
             if col1.button(home_team):
                 selected_team = home_team
-                goal_center = (105, 34)  # Goal for attacking direction
+                goal_center = (105, 34)  # Center of the attacking goal
             if col2.button(away_team):
                 selected_team = away_team
-                goal_center = (0, 34)  # Goal for defending direction
+                goal_center = (0, 34)  # Center of the defending goal
 
             if selected_team:
                 team_events = load_team_events(selected_team, match_id)
