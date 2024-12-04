@@ -30,7 +30,9 @@ def load_matches(competition, season):
     return pd.DataFrame(matches.get(key, []))
 
 def load_team_events(team_name, match_id):
+    # Simulate loading events for debugging
     if team_name and match_id:
+        st.write(f"Loading events for Team: {team_name}, Match ID: {match_id}")  # Debug statement
         return pd.DataFrame({
             "x": [30, 50, 70],
             "y": [20, 40, 60],
@@ -38,6 +40,7 @@ def load_team_events(team_name, match_id):
             "goal_x": [2.5, 4.5, 7],
             "goal_y": [1, 1.5, 3],
         })
+    st.warning("No events found for the selected team or match.")
     return pd.DataFrame()
 
 # Visualization for shot locations on the field
