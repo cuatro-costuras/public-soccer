@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import streamlit as st
 import plotly.express as px
 from statsbombpy import sb
@@ -42,8 +41,9 @@ if selected_competition and selected_season:
     matches = load_matches(competition_id, season_id)
 
     if not matches.empty:
-        match_options = matches["match_id"].unique()
-        selected_match_id = st.sidebar.selectbox("Select Match", match_options)
+        matches["match_name"] = matches["home_team"] + " vs " + matches["away_team"]
+        match_dropdown = matches.set_index("match_id")["match_name"].to_dict()
+        selected_match_id = st.sidebar.selectbox("Select Match", options=list(match_dropdown.keys()), format_func=lambda x: match_dropdown[x])
 
         if selected_match_id:
             events = load_events(selected_match_id)
@@ -82,8 +82,8 @@ if selected_competition and selected_season:
                     pitch_data["x"] = pitch_data["location"].apply(lambda loc: loc[0] if isinstance(loc, list) else None)
                     pitch_data["y"] = pitch_data["location"].apply(lambda loc: loc[1] if isinstance(loc, list) else None)
 
-                    pitch_data["color"] = pitch_data["shot_outcome"].apply(
-                        lambda outcome: "green" if outcome == "Goal" else "yellow" if outcome == "On Target" else "red"
+                    pitch_data["shot_color"] = pitch_data["shot_outcome"].map(
+                        {"Goal": "green", "On Target": "yellow", "Off Target": "red"}
                     )
 
                     st.plotly_chart(
@@ -91,9 +91,9 @@ if selected_competition and selected_season:
                             pitch_data,
                             x="x",
                             y="y",
-                            color="color",
+                            color="shot_color",
                             title="Shot Locations on the Pitch",
-                            labels={"x": "Field Width", "y": "Field Length"},
+                            labels={"x": "Field Width", "y": "Field Length", "shot_color": "Shot Outcome"},
                             color_discrete_map={"green": "Goal", "yellow": "On Target", "red": "Off Target"},
                             size_max=10
                         ),
@@ -113,9 +113,9 @@ if selected_competition and selected_season:
                             goal_data,
                             x="goal_x",
                             y="goal_y",
-                            color="color",
+                            color="shot_color",
                             title="Shot Outcomes on Goal",
-                            labels={"goal_x": "Goal Width", "goal_y": "Goal Height"},
+                            labels={"goal_x": "Goal Width", "goal_y": "Goal Height", "shot_color": "Shot Outcome"},
                             color_discrete_map={"green": "Goal", "yellow": "On Target", "red": "Off Target"},
                             size_max=10
                         ),
