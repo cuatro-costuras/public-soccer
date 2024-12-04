@@ -4,7 +4,7 @@ from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-# Mock data-loading functions
+# Mock data-loading functions for matches and events
 def load_competitions():
     return pd.DataFrame({
         "competition": ["Premier League", "La Liga", "Bundesliga"],
@@ -29,19 +29,25 @@ def load_matches(competition, season):
     key = f"{competition}_{season}"
     return pd.DataFrame(matches.get(key, []))
 
-def load_team_events(team_name, match_id):
-    if team_name and match_id:
-        # Mock data for debugging
-        return pd.DataFrame({
-            "x": [30, 50, 70],
-            "y": [20, 40, 60],
-            "outcome": ["goal", "saved", "missed"],
-            "goal_x": [2.5, 4.5, 7],
-            "goal_y": [1, 1.5, 3],
-        })
-    return pd.DataFrame()
+def load_events():
+    return pd.DataFrame({
+        "match_id": [1, 1, 1, 2, 2, 3, 3],
+        "team": ["Manchester City", "Manchester City", "Liverpool", "Chelsea", "Arsenal", "Real Madrid", "Atletico Madrid"],
+        "type": ["Shot", "Shot", "Shot", "Shot", "Shot", "Shot", "Shot"],
+        "outcome": ["goal", "saved", "missed", "goal", "missed", "saved", "missed"],
+        "x": [30, 50, 70, 40, 60, 20, 80],
+        "y": [20, 40, 60, 30, 70, 10, 90],
+        "goal_x": [2.5, 4.5, 7, 3, 6, 5, 8],
+        "goal_y": [1, 1.5, 3, 0.5, 2, 2.5, 1],
+    })
 
-# Visualization for shot locations on the field
+# Updated function: Dynamic filtering for team events
+def load_team_events(team_name, match_id):
+    events = load_events()
+    team_events = events[(events["team"] == team_name) & (events["match_id"] == match_id)]
+    return team_events
+
+# Remaining visualizations and metrics
 def plot_field_shots(events):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
@@ -58,7 +64,6 @@ def plot_field_shots(events):
     ax.set_title("Shot Location(s) On Field", fontsize=14)
     return fig
 
-# Visualization for shot locations in the goal
 def plot_goal_shots(events):
     fig, ax = plt.subplots(figsize=(8, 4))
     goal_width, goal_height = 7.32, 2.44
@@ -90,7 +95,6 @@ league_options = competitions_df["competition"].tolist()
 selected_league = st.sidebar.selectbox("Select League", league_options)
 
 if selected_league:
-    st.sidebar.write(f"**Selected League:** {selected_league}")
     season_options = competitions_df[competitions_df["competition"] == selected_league]["seasons"].values[0]
     selected_season = st.sidebar.selectbox("Select Season", season_options)
 
@@ -104,9 +108,9 @@ if selected_league:
                 lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
             home_team = selected_row["home_team"]
             away_team = selected_row["away_team"]
-            score = selected_row["score"]
+            match_id = selected_row["match_id"]
 
-            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {score}")
+            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {selected_row['score']}")
 
             # Team Selection
             st.markdown("### Select Team to Analyze")
@@ -118,14 +122,10 @@ if selected_league:
                 selected_team = away_team
 
             if selected_team:
+                team_events = load_team_events(selected_team, match_id)
                 st.markdown(f"### Analyzing: {selected_team}")
 
-                # Load Events for the Selected Team
-                team_events = load_team_events(selected_team, selected_row["match_id"])
-                st.write("Filtered Team Events for Debugging:", team_events)  # Debugging output
-
                 # Performance Metrics
-                st.markdown("### Performance Metrics")
                 col1, col2, col3, col4, col5 = st.columns(5)
                 total_shots = len(team_events)
                 shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
