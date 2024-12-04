@@ -9,130 +9,102 @@ st.set_page_config(layout="wide", page_title="Soccer Player Shooting Report", pa
 
 # Function to load matches
 @st.cache_data
-def load_matches():
+def load_matches(competition, season):
+    """
+    Fetch matches for a given competition and season.
+    """
     try:
-        # Fetch all competitions
-        competitions = sb.competitions()
-        st.write("Available Competitions:", competitions)
-        
-        # Filter for a specific competition and season
-        competition = "1. Bundesliga"  # Example: Adjust this to the desired competition
-        season = "2023/2024"           # Example: Adjust to the desired season
-        
         matches = sb.matches(competition=competition, season=season)
         return matches
     except Exception as e:
         st.error(f"Error loading matches: {e}")
         return pd.DataFrame()
 
+# Function to load events for a selected match
+@st.cache_data
+def load_match_events(match_id):
+    """
+    Fetch events for a specific match.
+    """
+    try:
+        events = sb.events(match_id)
+        return events
+    except Exception as e:
+        st.error(f"Error loading match events: {e}")
+        return pd.DataFrame()
+
 # Main App
 st.title("Soccer Player Shooting Report")
 
-# Load Matches
-matches = load_matches()
-if matches.empty:
-    st.error("No matches found. Please check your competition and season parameters.")
-else:
-    st.write("Matches loaded successfully.")
-    st.write(matches)
+# Step 1: Select a competition and season
+st.sidebar.header("Match Selector")
+competitions = sb.competitions()
+competition = st.sidebar.selectbox("Select Competition", competitions["competition_name"].unique())
+season = st.sidebar.selectbox("Select Season", competitions[competitions["competition_name"] == competition]["season_name"])
 
-# Filter shots from event data
-def filter_shots(events):
-    shots = events[events['type'] == 'Shot']
-    return shots
-
-# Filter roster from event data
-def get_roster(events, team_name):
-    players = events[events['team'] == team_name][['player', 'position']].drop_duplicates()
-    players.columns = ['Player Name', 'Position']
-    return players
-
-# Plot player shot data
-def plot_shots_on_pitch(player_shots):
-    pitch = Pitch(pitch_type='statsbomb', figsize=(10, 6), line_color='black')
-    fig, ax = pitch.draw()
-    colors = {'Goal': 'green', 'On Target': 'yellow', 'Off Target': 'red'}
-
-    for i, shot in player_shots.iterrows():
-        color = colors['Goal'] if shot['outcome'] == 'Goal' else (
-            colors['On Target'] if shot['outcome'] == 'On Target' else colors['Off Target'])
-        pitch.scatter(shot['location'][0], shot['location'][1], c=color, s=100, ax=ax)
-    
-    st.pyplot(fig)
-
-# Plot player shots on goal
-def plot_shots_on_goal(player_shots):
-    pitch = Pitch(goal_type='statsbomb', pitch_type='goal', figsize=(10, 6), line_color='black')
-    fig, ax = pitch.draw()
-    colors = {'Goal': 'green', 'On Target': 'yellow', 'Off Target': 'red'}
-
-    for i, shot in player_shots.iterrows():
-        color = colors['Goal'] if shot['outcome'] == 'Goal' else (
-            colors['On Target'] if shot['outcome'] == 'On Target' else colors['Off Target'])
-        pitch.scatter(shot['shot_end_location'][0], shot['shot_end_location'][1], c=color, s=100, ax=ax)
-    
-    st.pyplot(fig)
-
-# Main app
-st.set_page_config(layout="wide", page_title="Soccer Player Shooting Report", page_icon="⚽")
-st.title("Soccer Player Shooting Report")
-
-# 1) Select a match
-st.sidebar.header("Select Match")
-competition = st.sidebar.selectbox("Competition", ["Women's World Cup", "World Cup", "Bundesliga"])
-season = st.sidebar.selectbox("Season", ["2023", "2022", "2021"])
-matches = load_matches(competition=competition, season=season)
-
-match_selection = st.sidebar.selectbox(
-    "Select Match",
-    matches[['home_team', 'away_team', 'match_date']].apply(
-        lambda row: f"{row['home_team']} vs {row['away_team']} ({row['match_date']})", axis=1
-    )
-)
-selected_match_id = matches.loc[
-    matches[['home_team', 'away_team', 'match_date']].apply(
-        lambda row: f"{row['home_team']} vs {row['away_team']} ({row['match_date']})", axis=1
-    ) == match_selection, 'match_id'
-].values[0]
-
-events = load_match_events(selected_match_id)
-
-# 2) Toggle team roster
-teams = events['team'].unique()
-selected_team = st.sidebar.radio("Select Team", teams)
-team_roster = get_roster(events, selected_team)
-
-st.write(f"### Roster for {selected_team}")
-st.table(team_roster)
-
-# 3) Select player
-selected_player = st.selectbox("Select Player", team_roster['Player Name'])
-
-# 4) Player Profile
-if selected_player:
-    st.write(f"### Player Profile: {selected_player}")
-    player_shots = filter_shots(events[events['player'] == selected_player])
-
-    # Metrics
-    shots_taken = len(player_shots)
-    shots_on_target = len(player_shots[player_shots['outcome'].isin(['Goal', 'On Target'])])
-    goals = len(player_shots[player_shots['outcome'] == 'Goal'])
-    conversion_rate = (goals / shots_taken * 100) if shots_taken > 0 else 0
-    goals_per_game = goals  # Adjust for multiple games if needed
-    expected_goals = player_shots['shot_statsbomb_xg'].sum()
-
-    # Display metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Shots Taken", shots_taken)
-    col2.metric("Shots on Target", shots_on_target)
-    col3.metric("Conversion Rate", f"{conversion_rate:.2f}%")
-    col4.metric("Goals/Game", goals_per_game)
-    col5.metric("Expected Goals (xG)", f"{expected_goals:.2f}")
-
-    # Visuals
-    st.write("### Shooting Visuals")
-    st.write("#### Shot Locations on Field")
-    plot_shots_on_pitch(player_shots)
-
-    st.write("#### Shot Locations on Goal")
-    plot_shots_on_goal(player_shots)
+if competition and season:
+    # Step 2: Load matches
+    matches = load_matches(competition, season)
+    if matches.empty:
+        st.error("No matches found for the selected competition and season.")
+    else:
+        match = st.sidebar.selectbox("Select Match", matches["match_id"].unique(), format_func=lambda x: matches[matches["match_id"] == x]["home_team"] + " vs " + matches[matches["match_id"] == x]["away_team"])
+        
+        if match:
+            # Step 3: Load match events
+            events = load_match_events(match)
+            if events.empty:
+                st.error("No events found for the selected match.")
+            else:
+                # Step 4: Toggle between team rosters
+                team_selector = st.radio("Select Team", ["Home Team", "Away Team"])
+                if team_selector == "Home Team":
+                    team = matches[matches["match_id"] == match]["home_team"].values[0]
+                else:
+                    team = matches[matches["match_id"] == match]["away_team"].values[0]
+                
+                st.subheader(f"{team} Roster")
+                roster = events[events["team"] == team][["player_name", "position"]].drop_duplicates()
+                st.table(roster)
+                
+                # Step 5: Select a player
+                player = st.selectbox("Select a Player", roster["player_name"].unique())
+                
+                if player:
+                    player_events = events[events["player_name"] == player]
+                    
+                    # Player metrics
+                    shots_taken = len(player_events[player_events["type"] == "Shot"])
+                    shots_on_target = len(player_events[(player_events["type"] == "Shot") & (player_events["shot_outcome"] == "On Target")])
+                    goals = len(player_events[(player_events["type"] == "Shot") & (player_events["shot_outcome"] == "Goal")])
+                    games_played = len(player_events["match_id"].unique())
+                    xg = player_events["shot_statsbomb_xg"].sum()
+                    
+                    # Metrics boxes
+                    st.subheader(f"Performance Metrics for {player}")
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    col1.metric("Shots Taken", shots_taken)
+                    col2.metric("Shots on Target", shots_on_target)
+                    col3.metric("Shot Conversion Rate", f"{(goals / shots_taken * 100):.1f}%" if shots_taken > 0 else "0%")
+                    col4.metric("Goals per Game", f"{(goals / games_played):.2f}" if games_played > 0 else "0")
+                    col5.metric("Expected Goals (xG)", f"{xg:.2f}")
+                    
+                    # Step 6: Visualize shooting tendencies
+                    st.subheader("Shooting Tendencies")
+                    pitch = Pitch(pitch_type='statsbomb', line_color='black')
+                    
+                    # Field positions for shots
+                    st.write("Shot Locations on the Field")
+                    fig, ax = pitch.draw(figsize=(10, 6))
+                    for _, shot in player_events[player_events["type"] == "Shot"].iterrows():
+                        color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                        pitch.scatter(shot["location_x"], shot["location_y"], c=color, ax=ax, s=100)
+                    st.pyplot(fig)
+                    
+                    # Goal visualization
+                    st.write("Shot Outcomes in Goal")
+                    goal_fig, goal_ax = pitch.draw(figsize=(10, 6), pitch_type="statsbomb", goal_type="statsbomb")
+                    for _, shot in player_events[player_events["type"] == "Shot"].iterrows():
+                        color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
+                        pitch.scatter(shot["shot_end_location_x"], shot["shot_end_location_y"], c=color, ax=goal_ax, s=100)
+                    st.pyplot(goal_fig)
