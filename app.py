@@ -4,7 +4,7 @@ from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-# Mock function to load competitions and matches
+# Mock functions to simulate loading data
 def load_competitions():
     return pd.DataFrame({
         "competition": ["Premier League", "La Liga", "Bundesliga"],
@@ -19,23 +19,34 @@ def load_matches(competition, season):
             "away_team": ["Liverpool", "Arsenal"],
             "score": ["3-1", "2-2"],
         })
-    else:
+    elif competition == "La Liga" and season == "2022/2023":
         return pd.DataFrame({
             "match_id": [3, 4],
-            "home_team": ["Team A", "Team B"],
-            "away_team": ["Team C", "Team D"],
-            "score": ["0-0", "1-1"],
+            "home_team": ["Real Madrid", "Barcelona"],
+            "away_team": ["Atletico Madrid", "Sevilla"],
+            "score": ["2-0", "1-1"],
         })
+    elif competition == "Bundesliga" and season == "2023/2024":
+        return pd.DataFrame({
+            "match_id": [5, 6],
+            "home_team": ["Bayern Munich", "Dortmund"],
+            "away_team": ["RB Leipzig", "Leverkusen"],
+            "score": ["4-2", "3-3"],
+        })
+    else:
+        return pd.DataFrame()
 
 def load_team_events(team_name, match_id):
-    # Simulate team events dynamically for the match and team
-    return pd.DataFrame({
-        "x": [30, 50, 70],
-        "y": [20, 40, 60],
-        "outcome": ["goal", "saved", "missed"],
-        "goal_x": [2.5, 4.5, 7],
-        "goal_y": [1, 1.5, 3],
-    })
+    # Simulated team-specific event data
+    if team_name and match_id:
+        return pd.DataFrame({
+            "x": [30, 50, 70],
+            "y": [20, 40, 60],
+            "outcome": ["goal", "saved", "missed"],
+            "goal_x": [2.5, 4.5, 7],
+            "goal_y": [1, 1.5, 3],
+        })
+    return pd.DataFrame()
 
 # Visualization for shot locations on the field
 def plot_field_shots(events):
