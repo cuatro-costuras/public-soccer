@@ -69,6 +69,15 @@ else:
             shots["x"], shots["y"] = zip(*shots["location"].apply(lambda loc: (loc[0], loc[1]) if isinstance(loc, list) and len(loc) == 2 else (np.nan, np.nan)))
             shots = shots.dropna(subset=["x", "y"])  # Remove invalid coordinates
 
+            # Add color mapping for shot outcomes
+            outcome_color_map = {
+                "Goal": "green",
+                "On Target": "yellow",
+                "Off Target": "red",
+                "Blocked": "orange"
+            }
+            shots["outcome_color"] = shots["shot_outcome"].map(outcome_color_map).fillna("grey")
+
             # Calculate Metrics
             shots_taken = len(shots)
             shots_on_target = len(shots[shots["shot_outcome"].isin(["On Target", "Goal"])])
@@ -90,25 +99,28 @@ else:
                 shots,
                 x="x",
                 y="y",
-                color=shots["shot_outcome"].map({"Goal": "green", "On Target": "yellow", "Off Target": "red"}),
-                labels={"x": "Field Length", "y": "Field Width"},
+                color="outcome_color",
+                labels={"x": "Field Length", "y": "Field Width", "outcome_color": "Shot Outcome"},
                 title="Shots Taken",
-                color_discrete_map={"green": "Goal", "yellow": "On Target", "red": "Off Target"},
+                color_discrete_map=outcome_color_map,
                 hover_data=["shot_outcome", "shot_statsbomb_xg"]
             )
             st.plotly_chart(pitch_fig, use_container_width=True)
 
             # Visualize Shot Outcomes on Goal
             st.subheader("Shot Outcomes on Goal")
-            goal_shots = shots[shots["shot_outcome"].notnull()]
+            goal_shots = shots[shots["shot_end_location"].notnull()]
+            goal_shots["goal_x"], goal_shots["goal_y"] = zip(*goal_shots["shot_end_location"].apply(lambda loc: (loc[0], loc[1]) if isinstance(loc, list) and len(loc) > 1 else (np.nan, np.nan)))
+            goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
+
             goal_fig = px.scatter(
                 goal_shots,
-                x=goal_shots["shot_end_location"].apply(lambda loc: loc[0] if isinstance(loc, list) and len(loc) > 0 else np.nan),
-                y=goal_shots["shot_end_location"].apply(lambda loc: loc[1] if isinstance(loc, list) and len(loc) > 1 else np.nan),
-                color=goal_shots["shot_outcome"].map({"Goal": "green", "On Target": "yellow", "Off Target": "red"}),
-                labels={"x": "Goal Width", "y": "Goal Height"},
+                x="goal_x",
+                y="goal_y",
+                color="outcome_color",
+                labels={"goal_x": "Goal Width", "goal_y": "Goal Height", "outcome_color": "Shot Outcome"},
                 title="Shot Outcomes on Goal",
-                color_discrete_map={"green": "Goal", "yellow": "On Target", "red": "Off Target"},
+                color_discrete_map=outcome_color_map,
                 hover_data=["shot_outcome", "shot_statsbomb_xg"]
             )
             st.plotly_chart(goal_fig, use_container_width=True)
