@@ -50,7 +50,8 @@ def plot_field_shots(events, goal_center):
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-        ax.plot([row["x"], goal_center[0]], [row["y"], goal_center[1]], color=color, linestyle="dotted", lw=1.5)
+        if goal_center:
+            ax.plot([row["x"], goal_center[0]], [row["y"], goal_center[1]], color=color, linestyle="dotted", lw=1.5)
 
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
@@ -116,10 +117,13 @@ if selected_league:
             st.markdown("### Select Team to Analyze")
             col1, col2 = st.columns(2)
             selected_team = None
+            goal_center = None
             if col1.button(home_team):
                 selected_team = home_team
+                goal_center = (105, 34)  # Goal for attacking direction
             if col2.button(away_team):
                 selected_team = away_team
+                goal_center = (0, 34)  # Goal for defending direction
 
             if selected_team:
                 team_events = load_team_events(selected_team, match_id)
@@ -142,7 +146,7 @@ if selected_league:
                 # Visualizations
                 col1, col2 = st.columns(2)
                 with col1:
-                    field_fig = plot_field_shots(team_events, goal_center=(0, 0))  # Adjust goal_center as needed
+                    field_fig = plot_field_shots(team_events, goal_center)
                     st.pyplot(field_fig)
                 with col2:
                     goal_fig = plot_goal_shots(team_events)
