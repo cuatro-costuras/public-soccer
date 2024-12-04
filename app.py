@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from mplsoccer import Pitch
+from mplsoccer import Pitch, VerticalPitch
 import matplotlib.pyplot as plt
 
 # Simulated loading functions (replace with actual StatsBombPy calls)
@@ -21,12 +21,12 @@ def load_matches():
 def load_events(match_id):
     # Simulate events data (replace with real data)
     return pd.DataFrame({
-        "type": ["Shot", "Pass", "Shot", "Shot"],
-        "team": ["Chelsea", "Chelsea", "Arsenal", "Arsenal"],
-        "location": [[30, 40], [50, 60], [40, 20], [60, 30]],
-        "shot_end_location": [[3, 2], [None], [1, -1], [2, 1]],
-        "shot_statsbomb_xg": [0.5, None, 0.8, 0.2],
-        "shot_outcome": ["Goal", None, "Missed", "Saved"],
+        "type": ["Shot", "Pass", "Shot", "Shot", "Shot", "Shot"],
+        "team": ["Chelsea", "Chelsea", "Arsenal", "Arsenal", "Chelsea", "Arsenal"],
+        "location": [[30, 40], [50, 60], [40, 20], [60, 30], [45, 55], [50, 50]],
+        "shot_end_location": [[3, 2], [None], [1, -1], [2, 1], [-1, 1], [4, -1]],
+        "shot_statsbomb_xg": [0.5, None, 0.8, 0.2, 0.3, 0.1],
+        "shot_outcome": ["Goal", None, "Missed", "Saved", "Missed", "Goal"],
     })
 
 # Step 1: Select Match
@@ -71,70 +71,71 @@ if not filtered_matches.empty:
         team_events = events[events["team"] == selected_team]
 
         # Ensure valid shot data
-        if "type" in team_events.columns and "location" in team_events.columns:
-            shot_data = team_events[(team_events["type"] == "Shot") & team_events["location"].notnull()]
+        shot_data = team_events[(team_events["type"] == "Shot") & team_events["location"].notnull()]
 
-            # Calculate Metrics
-            total_shots = len(shot_data)
-            shots_on_target = len(shot_data[shot_data["shot_outcome"].isin(["Goal", "Saved"])])
-            goals = len(shot_data[shot_data["shot_outcome"] == "Goal"])
-            xg = shot_data["shot_statsbomb_xg"].sum()
-            shot_conversion_rate = goals / total_shots * 100 if total_shots > 0 else 0
+        # Calculate Metrics
+        total_shots = len(shot_data)
+        shots_on_target = len(shot_data[shot_data["shot_outcome"].isin(["Goal", "Saved"])])
+        goals = len(shot_data[shot_data["shot_outcome"] == "Goal"])
+        xg = shot_data["shot_statsbomb_xg"].sum()
+        shot_conversion_rate = goals / total_shots * 100 if total_shots > 0 else 0
 
-            # Display metrics as boxes
-            box1, box2, box3, box4, box5 = st.columns(5)
-            box1.metric("Total Shots", total_shots)
-            box2.metric("Shots on Target", shots_on_target)
-            box3.metric("Shot Conversion Rate", f"{shot_conversion_rate:.2f}%")
-            box4.metric("Goals", goals)
-            box5.metric("Expected Goals (xG)", f"{xg:.2f}")
+        # Display metrics as boxes
+        box1, box2, box3, box4, box5 = st.columns(5)
+        box1.metric("Total Shots", total_shots)
+        box2.metric("Shots on Target", shots_on_target)
+        box3.metric("Shot Conversion Rate", f"{shot_conversion_rate:.2f}%")
+        box4.metric("Goals", goals)
+        box5.metric("Expected Goals (xG)", f"{xg:.2f}")
 
-            # Step 4: Visualize Shots on Soccer Pitch
-            st.write("### Shot Locations on Field")
-            pitch = Pitch(pitch_type="statsbomb", line_color="black")
-            fig, ax = pitch.draw(figsize=(10, 6))
+        # Step 4: Visualize Shots on Soccer Pitch
+        st.write("### Shot Locations on Field")
+        pitch = Pitch(pitch_type="statsbomb", line_color="black")
+        fig, ax = pitch.draw(figsize=(10, 6))
 
-            # Add shots to pitch
-            for _, shot in shot_data.iterrows():
-                x, y = shot["location"]
+        # Add shots to pitch
+        for _, shot in shot_data.iterrows():
+            x, y = shot["location"]
+            outcome = shot["shot_outcome"]
+            color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
+            pitch.scatter(x, y, s=100, color=color, ax=ax)
+
+        st.pyplot(fig)
+
+        # Add legend for colors
+        st.write("#### Key for Field Visualization")
+        st.write("- **Green**: Goal")
+        st.write("- **Red**: Missed")
+        st.write("- **Blue**: Saved")
+
+        # Step 5: Visualize Shots on Goal
+        st.write("### Shot Locations on Goal")
+        fig_goal, ax_goal = plt.subplots(figsize=(6, 4))
+
+        # Draw goal as a rectangle
+        ax_goal.set_xlim(-3, 3)
+        ax_goal.set_ylim(0, 2.5)
+        ax_goal.add_patch(plt.Rectangle((-3, 0), 6, 2.44, color="white", ec="black", lw=2))
+
+        for _, shot in shot_data.iterrows():
+            if shot["shot_end_location"]:
+                x, y = shot["shot_end_location"]
                 outcome = shot["shot_outcome"]
                 color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
-                pitch.scatter(x, y, s=100, color=color, ax=ax)
+                ax_goal.scatter(x, y, color=color, s=100)
 
-            st.pyplot(fig)
+        ax_goal.set_title("Shot Placement in Goal")
+        ax_goal.set_xlabel("Width of Goal")
+        ax_goal.set_ylabel("Height of Goal")
+        st.pyplot(fig_goal)
 
-            # Add legend for colors
-            st.write("#### Key for Field Visualization")
-            st.write("- **Green**: Goal")
-            st.write("- **Red**: Missed")
-            st.write("- **Blue**: Saved")
+        # Add legend for goal visualization
+        st.write("#### Key for Goal Visualization")
+        st.write("- **Green**: Goal")
+        st.write("- **Red**: Missed")
+        st.write("- **Blue**: Saved")
 
-            # Step 5: Visualize Shots on Goal
-            st.write("### Shot Locations on Goal")
-            fig_goal, ax_goal = plt.subplots(figsize=(6, 4))
-            ax_goal.set_xlim(-3, 3)
-            ax_goal.set_ylim(0, 2.5)
-
-            for _, shot in shot_data.iterrows():
-                if shot["shot_end_location"]:
-                    x, y = shot["shot_end_location"]
-                    outcome = shot["shot_outcome"]
-                    color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
-                    ax_goal.scatter(x, y, color=color, s=100)
-
-            ax_goal.set_title("Shot Placement in Goal")
-            ax_goal.set_xlabel("Width of Goal")
-            ax_goal.set_ylabel("Height of Goal")
-
-            st.pyplot(fig_goal)
-
-            # Add legend for goal visualization
-            st.write("#### Key for Goal Visualization")
-            st.write("- **Green**: Goal")
-            st.write("- **Red**: Missed")
-            st.write("- **Blue**: Saved")
-
-        else:
-            st.write("No valid shot data available for the selected team.")
+        if total_shots == 0:
+            st.write("No shots recorded for this team.")
 else:
     st.sidebar.write("No matches found for the selected competition and season.")
