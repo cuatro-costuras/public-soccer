@@ -90,60 +90,68 @@ league_options = competitions_df["competition"].tolist()
 selected_league = st.sidebar.selectbox("Select League", league_options)
 
 if selected_league:
+    st.sidebar.write(f"**Selected League:** {selected_league}")
     season_options = competitions_df[competitions_df["competition"] == selected_league]["seasons"].values[0]
     selected_season = st.sidebar.selectbox("Select Season", season_options)
 
     matches_df = load_matches(selected_league, selected_season)
-    match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
-    selected_match = st.sidebar.selectbox("Select Match", match_labels)
+    if not matches_df.empty:
+        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
+        selected_match = st.sidebar.selectbox("Select Match", match_labels)
 
-    if selected_match:
-        selected_row = matches_df.loc[matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
-        home_team = selected_row["home_team"]
-        away_team = selected_row["away_team"]
-        score = selected_row["score"]
+        if selected_match:
+            selected_row = matches_df.loc[matches_df.apply(
+                lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
+            home_team = selected_row["home_team"]
+            away_team = selected_row["away_team"]
+            score = selected_row["score"]
 
-        st.markdown(f"### Match: {home_team} vs {away_team} | Score: {score}")
+            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {score}")
 
-        # Team Selection
-        st.markdown("### Select Team to Analyze")
-        col1, col2 = st.columns(2)
-        selected_team = None
-        if col1.button(home_team):
-            selected_team = home_team
-        if col2.button(away_team):
-            selected_team = away_team
+            # Team Selection
+            st.markdown("### Select Team to Analyze")
+            col1, col2 = st.columns(2)
+            selected_team = None
+            if col1.button(home_team):
+                selected_team = home_team
+            if col2.button(away_team):
+                selected_team = away_team
 
-        if selected_team:
-            st.markdown(f"### Analyzing: {selected_team}")
+            if selected_team:
+                st.markdown(f"### Analyzing: {selected_team}")
 
-            # Load Events for the Selected Team
-            team_events = load_team_events(selected_team, selected_row["match_id"])
+                # Load Events for the Selected Team
+                team_events = load_team_events(selected_team, selected_row["match_id"])
+                st.write("Filtered Team Events for Debugging:", team_events)  # Debugging output
 
-            # Performance Metrics
-            st.markdown("### Performance Metrics")
-            col1, col2, col3, col4, col5 = st.columns(5)
-            total_shots = len(team_events)
-            shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
-            shot_conversion_rate = f"{(team_events[team_events['outcome'] == 'goal'].shape[0] / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
-            goals = team_events[team_events["outcome"] == "goal"].shape[0]
-            expected_goals = 1.25  # Placeholder
+                # Performance Metrics
+                st.markdown("### Performance Metrics")
+                col1, col2, col3, col4, col5 = st.columns(5)
+                total_shots = len(team_events)
+                shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
+                shot_conversion_rate = f"{(team_events[team_events['outcome'] == 'goal'].shape[0] / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
+                goals = team_events[team_events["outcome"] == "goal"].shape[0]
+                expected_goals = 1.25  # Placeholder
 
-            col1.metric("Total Shots", total_shots)
-            col2.metric("Shots on Target", shots_on_target)
-            col3.metric("Shot Conversion Rate", shot_conversion_rate)
-            col4.metric("Goals", goals)
-            col5.metric("Expected Goals (xG)", expected_goals)
+                col1.metric("Total Shots", total_shots)
+                col2.metric("Shots on Target", shots_on_target)
+                col3.metric("Shot Conversion Rate", shot_conversion_rate)
+                col4.metric("Goals", goals)
+                col5.metric("Expected Goals (xG)", expected_goals)
 
-            # Visualizations
-            st.markdown("### Shot Location(s) On Field")
-            field_fig = plot_field_shots(team_events)
-            st.pyplot(field_fig)
+                # Visualizations
+                st.markdown("### Shot Location(s) On Field")
+                field_fig = plot_field_shots(team_events)
+                st.pyplot(field_fig)
 
-            st.markdown("### Shot Location(s) On Goal")
-            goal_fig = plot_goal_shots(team_events)
-            st.pyplot(goal_fig)
+                st.markdown("### Shot Location(s) On Goal")
+                goal_fig = plot_goal_shots(team_events)
+                st.pyplot(goal_fig)
+            else:
+                st.warning("Please select a team to analyze.")
         else:
-            st.warning("Please select a team to analyze.")
+            st.warning("Please select a match.")
     else:
-        st.warning("Please select a match.")
+        st.warning("No matches available for the selected season.")
+else:
+    st.warning("Please select a league.")
