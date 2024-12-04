@@ -1,3 +1,20 @@
+import pandas as pd
+import streamlit as st
+from statsbombpy import sb
+
+# Helper Functions
+def get_competitions():
+    competitions = sb.competitions()
+    return competitions
+
+def get_matches(competition_id, season_id):
+    matches = sb.matches(competition_id=competition_id, season_id=season_id)
+    return matches
+
+def get_events(match_id):
+    events = sb.events(match_id=match_id)
+    return events
+
 # Streamlit UI
 st.title("Retrieve Column Names and Sample Data for StatsBombPy")
 
