@@ -1,19 +1,40 @@
-import streamlit as st
 import pandas as pd
+import numpy as np
+import streamlit as st
 from statsbombpy import sb
 from mplsoccer import Pitch
 
+# Set Streamlit page configuration
+st.set_page_config(layout="wide", page_title="Soccer Player Shooting Report", page_icon="⚽")
+
 # Function to load matches
 @st.cache_data
-def load_matches(competition, season):
-    matches = sb.matches(competition=competition, season=season)
-    return matches
+def load_matches():
+    try:
+        # Fetch all competitions
+        competitions = sb.competitions()
+        st.write("Available Competitions:", competitions)
+        
+        # Filter for a specific competition and season
+        competition = "1. Bundesliga"  # Example: Adjust this to the desired competition
+        season = "2023/2024"           # Example: Adjust to the desired season
+        
+        matches = sb.matches(competition=competition, season=season)
+        return matches
+    except Exception as e:
+        st.error(f"Error loading matches: {e}")
+        return pd.DataFrame()
 
-# Function to load events for a specific match
-@st.cache_data
-def load_match_events(match_id):
-    events = sb.events(match_id=match_id)
-    return events
+# Main App
+st.title("Soccer Player Shooting Report")
+
+# Load Matches
+matches = load_matches()
+if matches.empty:
+    st.error("No matches found. Please check your competition and season parameters.")
+else:
+    st.write("Matches loaded successfully.")
+    st.write(matches)
 
 # Filter shots from event data
 def filter_shots(events):
