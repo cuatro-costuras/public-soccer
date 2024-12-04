@@ -38,6 +38,7 @@ matches = load_matches(competition_id, season_id)
 if matches.empty:
     st.error("No matches found for the selected competition and season.")
 else:
+    # Format match options for dropdown
     match_options = matches[["home_team", "away_team", "match_id"]]
     match_options["match_name"] = match_options["home_team"] + " vs " + match_options["away_team"]
     selected_match = st.sidebar.selectbox(
@@ -51,6 +52,7 @@ else:
     if events.empty:
         st.error("No events found for the selected match.")
     else:
+        # Team Selection
         team = st.sidebar.radio(
             "Select Team",
             options=events["team"].unique(),
@@ -66,7 +68,11 @@ else:
             st.warning("No shots found for this team in the selected match.")
         else:
             # Process and Validate Shot Data
-            shots["x"], shots["y"] = zip(*shots["location"].apply(lambda loc: (loc[0], loc[1]) if isinstance(loc, list) and len(loc) == 2 else (np.nan, np.nan)))
+            def extract_coordinates(location_column, index):
+                return location_column.apply(lambda loc: loc[index] if isinstance(loc, list) and len(loc) > index else np.nan)
+
+            shots["x"] = extract_coordinates(shots["location"], 0)
+            shots["y"] = extract_coordinates(shots["location"], 1)
             shots = shots.dropna(subset=["x", "y"])  # Remove invalid coordinates
 
             # Add color mapping for shot outcomes
@@ -77,6 +83,10 @@ else:
                 "Blocked": "orange"
             }
             shots["outcome_color"] = shots["shot_outcome"].map(outcome_color_map).fillna("grey")
+
+            # Validate `outcome_color`
+            valid_colors = {"green", "yellow", "red", "orange", "grey"}
+            shots = shots[shots["outcome_color"].isin(valid_colors)]
 
             # Calculate Metrics
             shots_taken = len(shots)
@@ -110,7 +120,8 @@ else:
             # Visualize Shot Outcomes on Goal
             st.subheader("Shot Outcomes on Goal")
             goal_shots = shots[shots["shot_end_location"].notnull()]
-            goal_shots["goal_x"], goal_shots["goal_y"] = zip(*goal_shots["shot_end_location"].apply(lambda loc: (loc[0], loc[1]) if isinstance(loc, list) and len(loc) > 1 else (np.nan, np.nan)))
+            goal_shots["goal_x"] = extract_coordinates(goal_shots["shot_end_location"], 0)
+            goal_shots["goal_y"] = extract_coordinates(goal_shots["shot_end_location"], 1)
             goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
 
             goal_fig = px.scatter(
