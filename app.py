@@ -104,7 +104,7 @@ if competition_id:
                         col2.metric("Shots on Target", metrics["Shots on Target"])
                         col3.metric("Conversion Rate (%)", f"{metrics['Shot Conversion Rate (%)']:.2f}")
                         col4.metric("Goals per Game", metrics["Goals per Game"])
-                        col5.metric("Expected Goals (xG)", f"{metrics['Expected Goals (xG'):.2f}")
+                        col5.metric("Expected Goals (xG)", f"{metrics['Expected Goals (xG)']:.2f}")
 
                         # Step 6: Visualizations
                         st.write("### Shooting Visualizations")
