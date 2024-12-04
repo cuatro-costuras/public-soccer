@@ -7,8 +7,8 @@ from matplotlib.patches import Rectangle
 # Mock data-loading functions for matches and events
 def load_competitions():
     return pd.DataFrame({
-        "competition": ["Premier League", "La Liga", "Bundesliga"],
-        "seasons": [["2022/2023", "2023/2024"], ["2022/2023"], ["2023/2024"]],
+        "competition": ["Premier League", "La Liga"],
+        "seasons": [["2022/2023", "2023/2024"], ["2022/2023"]],
     })
 
 def load_matches(competition, season):
@@ -20,10 +20,6 @@ def load_matches(competition, season):
         "La Liga_2022/2023": [
             {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid"},
             {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla"}
-        ],
-        "Bundesliga_2023/2024": [
-            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig"},
-            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen"}
         ],
     }
     key = f"{competition}_{season}"
@@ -41,20 +37,21 @@ def load_events():
         "goal_y": [1, 1.5, 3, 0.5, 2, 2.5, 1],
     })
 
-# Updated function: Dynamic filtering for team events
 def load_team_events(team_name, match_id):
     events = load_events()
-    team_events = events[(events["team"] == team_name) & (events["match_id"] == match_id)]
-    return team_events
+    return events[(events["team"] == team_name) & (events["match_id"] == match_id)]
 
 # Visualization Functions
-def plot_field_shots(events):
+def plot_field_shots(events, goal_center):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
     pitch.draw(ax=ax)
+    
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
+        ax.plot([row["x"], goal_center[0]], [row["y"], goal_center[1]], color=color, linestyle="dotted", lw=1.5)
+
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
         Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
@@ -73,12 +70,14 @@ def plot_goal_shots(events):
     ax.plot([goal_width, goal_width], [0, goal_height], color="black", lw=2)
     ax.set_xlim(-1, goal_width + 1)
     ax.set_ylim(-1, goal_height + 1)
+    
     for _, row in events.iterrows():
         if 0 <= row["goal_x"] <= goal_width and 0 <= row["goal_y"] <= goal_height:
             color = "green" if row["outcome"] == "goal" else "blue"
         else:
             color = "red"
         ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
+    
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
         Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
@@ -141,13 +140,13 @@ if selected_league:
                 col5.metric("Expected Goals (xG)", f"{expected_goals:.2f}")
 
                 # Visualizations
-                st.markdown("### Shot Location(s) On Field")
-                field_fig = plot_field_shots(team_events)
-                st.pyplot(field_fig)
-
-                st.markdown("### Shot Location(s) On Goal")
-                goal_fig = plot_goal_shots(team_events)
-                st.pyplot(goal_fig)
+                col1, col2 = st.columns(2)
+                with col1:
+                    field_fig = plot_field_shots(team_events, goal_center=(0, 0))  # Adjust goal_center as needed
+                    st.pyplot(field_fig)
+                with col2:
+                    goal_fig = plot_goal_shots(team_events)
+                    st.pyplot(goal_fig)
             else:
                 st.warning("Please select a team to analyze.")
         else:
