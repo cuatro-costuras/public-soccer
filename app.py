@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 def load_matches():
     # Simulate match data (replace with real data)
     return pd.DataFrame({
-        "match_id": [1, 2],
-        "competition": ["Premier League", "Bundesliga"],
-        "season": ["2022/2023", "2023/2024"],
-        "home_team": ["Team A", "Team C"],
-        "away_team": ["Team B", "Team D"],
+        "match_id": [1, 2, 3, 4],
+        "competition": ["Premier League", "La Liga", "Bundesliga", "Serie A"],
+        "season": ["2022/2023", "2022/2023", "2023/2024", "2023/2024"],
+        "home_team": ["Chelsea", "Barcelona", "Bayern Munich", "Juventus"],
+        "away_team": ["Arsenal", "Real Madrid", "Dortmund", "Inter Milan"],
     })
 
 @st.cache_data
@@ -20,10 +20,10 @@ def load_events(match_id):
     # Simulate events data (replace with real data)
     return pd.DataFrame({
         "type": ["Shot", "Pass", "Shot", "Shot"],
-        "team": ["Team A", "Team A", "Team B", "Team B"],
-        "location": [[30, 40], [50, 60], [40, 20], None],
-        "shot_statsbomb_xg": [0.5, None, 0.8, None],
-        "shot_outcome": ["Goal", None, "Missed", "Goal"],
+        "team": ["Chelsea", "Chelsea", "Arsenal", "Arsenal"],
+        "location": [[30, 40], [50, 60], [40, 20], [60, 30]],
+        "shot_statsbomb_xg": [0.5, None, 0.8, 0.2],
+        "shot_outcome": ["Goal", None, "Missed", "Saved"],
     })
 
 # Step 1: Select Match
@@ -73,7 +73,7 @@ if not filtered_matches.empty:
 
             # Calculate Metrics
             total_shots = len(shot_data)
-            shots_on_target = len(shot_data[shot_data["shot_outcome"] == "Goal"])
+            shots_on_target = len(shot_data[shot_data["shot_outcome"].isin(["Goal", "Saved"])])
             goals = len(shot_data[shot_data["shot_outcome"] == "Goal"])
             xg = shot_data["shot_statsbomb_xg"].sum()
 
@@ -83,7 +83,7 @@ if not filtered_matches.empty:
             st.write(f"**Expected Goals (xG):** {xg:.2f}")
 
             # Step 4: Visualize Shots on Soccer Pitch
-            st.write("### Shot Locations")
+            st.write("### Shot Locations on Field")
             pitch = Pitch(pitch_type="statsbomb", line_color="black")
             fig, ax = pitch.draw(figsize=(10, 6))
 
@@ -92,9 +92,36 @@ if not filtered_matches.empty:
                 x, y = shot["location"]
                 outcome = shot["shot_outcome"]
                 color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
-                pitch.scatter(x, y, s=100, color=color, ax=ax, label=outcome)
+                pitch.scatter(x, y, s=100, color=color, ax=ax)
 
             st.pyplot(fig)
+
+            # Add legend for colors
+            st.write("#### Key for Field Visualization")
+            st.write("- **Green**: Goal")
+            st.write("- **Red**: Missed")
+            st.write("- **Blue**: Saved")
+
+            # Step 5: Visualize Shots on Goal
+            st.write("### Shot Locations on Goal")
+            goal_fig, goal_ax = plt.subplots(figsize=(6, 4))
+            pitch_goal = Pitch(goal_type="box", line_color="black", pitch_type="statsbomb")
+            pitch_goal.draw(ax=goal_ax)
+
+            for _, shot in shot_data.iterrows():
+                x, y = shot["location"]
+                outcome = shot["shot_outcome"]
+                color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
+                pitch_goal.scatter(x, y, s=100, color=color, ax=goal_ax)
+
+            st.pyplot(goal_fig)
+
+            # Add legend for colors
+            st.write("#### Key for Goal Visualization")
+            st.write("- **Green**: Goal")
+            st.write("- **Red**: Missed")
+            st.write("- **Blue**: Saved")
+
         else:
             st.write("No valid shot data available for the selected team.")
 else:
