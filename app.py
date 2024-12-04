@@ -14,16 +14,16 @@ def load_competitions():
 def load_matches(competition, season):
     matches = {
         "Premier League_2022/2023": [
-            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool", "home_score": 3, "away_score": 1},
-            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal", "home_score": 2, "away_score": 2}
+            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool"},
+            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal"}
         ],
         "La Liga_2022/2023": [
-            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid", "home_score": 2, "away_score": 0},
-            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla", "home_score": 1, "away_score": 1}
+            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid"},
+            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla"}
         ],
         "Bundesliga_2023/2024": [
-            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig", "home_score": 4, "away_score": 2},
-            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen", "home_score": 3, "away_score": 3}
+            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig"},
+            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen"}
         ],
     }
     key = f"{competition}_{season}"
@@ -74,7 +74,10 @@ def plot_goal_shots(events):
     ax.set_xlim(-1, goal_width + 1)
     ax.set_ylim(-1, goal_height + 1)
     for _, row in events.iterrows():
-        color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
+        if 0 <= row["goal_x"] <= goal_width and 0 <= row["goal_y"] <= goal_height:
+            color = "green" if row["outcome"] == "goal" else "blue"
+        else:
+            color = "red"
         ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
@@ -100,17 +103,15 @@ if selected_league:
 
     matches_df = load_matches(selected_league, selected_season)
     if not matches_df.empty:
-        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['home_score']}-{row['away_score']})", axis=1)
+        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']}", axis=1)
         selected_match = st.sidebar.selectbox("Select Match", match_labels)
 
         if selected_match:
             selected_row = matches_df.loc[matches_df.apply(
-                lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['home_score']}-{row['away_score']})", axis=1) == selected_match].iloc[0]
+                lambda row: f"{row['home_team']} vs {row['away_team']}", axis=1) == selected_match].iloc[0]
             home_team = selected_row["home_team"]
             away_team = selected_row["away_team"]
             match_id = selected_row["match_id"]
-
-            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {selected_row['home_score']}-{selected_row['away_score']}")
 
             # Team Selection
             st.markdown("### Select Team to Analyze")
