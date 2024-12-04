@@ -1,57 +1,41 @@
-# Soccer Team Shooting Report App
+# Soccer Match Analysis App
 
 ## Overview
-The **Soccer Team Shooting Report App** is an interactive tool designed to analyze shooting performance for professional soccer teams using **StatsBomb Open Data**. The app allows users to explore team-level shooting tendencies in specific matches, showcasing shooting statistics and visualizing shot locations on the pitch and within the goal.
 
-This updated version features enhanced dropdown functionality for selecting competitions, seasons, and matches, and introduces improved visualizations of shots using **Plotly**.
-
----
+The **Soccer Match Analysis App** is an interactive Streamlit-based tool designed to analyze match data for soccer teams. This app is a demonstration showcasing how match and event data can be visualized and explored. The data used in this app is an example dataset and does not represent a full season's worth of real-world data for any league.
 
 ## Features
-1. **Competition and Season Selection:**
-   - Users can choose from available competitions and seasons.
-   - Matches are dynamically filtered based on the selected competition and season.
 
-2. **Match and Team Selection:**
-   - Dropdowns allow users to select a specific match.
-   - Radio buttons enable selection between the home and away teams for the chosen match.
+1. **League and Season Selection**:
+   - Choose between the **Premier League** and **La Liga**.
+   - Select from available mock seasons (e.g., `2022/2023`, `2023/2024`).
 
-3. **Shooting Metrics:**
-   - Key shooting metrics are displayed at the top of the app:
+2. **Match Selection**:
+   - Select matches from the chosen league and season.
+   - View teams competing in the match.
+
+3. **Team Analysis**:
+   - Analyze the selected team's performance in the match.
+   - Metrics include:
      - **Total Shots**
      - **Shots on Target**
      - **Shot Conversion Rate**
-     - **Goals per Game**
+     - **Goals**
      - **Expected Goals (xG)**
 
-4. **Shot Visualizations:**
-   - **Pitch Visualization:**
-     - A soccer pitch graphic shows the locations where shots were taken.
-     - Shot outcomes are color-coded:
-       - Green: Goal
-       - Yellow: On target but saved
-       - Red: Missed or off target
-   - **Goal Visualization:**
-     - A goal graphic shows the final placement of shots within or outside the goal.
-     - Outcomes are similarly color-coded for clarity.
+4. **Data Visualizations**:
+   - **Shot Location(s) On Field**: Displays where shots were taken on a soccer field, color-coded for outcomes:
+     - Green = Goal
+     - Red = Missed/Saved
+   - **Shot Location(s) On Goal**: Visualizes the placement of shots in relation to the goal, using the same color-coding as above.
 
-5. **Dynamic Filtering:**
-   - Visualizations and metrics dynamically update based on the selected team and match.
+5. **Streamlined User Interface**:
+   - Visualizations are displayed side by side for easy comparison.
+   - Performance metrics are shown in a clean, horizontal layout.
 
----
+## How to Run
 
-## Requirements
-- **Python**: 3.8+
-- **Libraries**:
-  - `streamlit`
-  - `statsbombpy`
-  - `pandas`
-  - `plotly`
-
----
-
-## Usage
-1. Clone this repository to your local machine:
+1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/soccer-team-shooting-report.git
-   cd soccer-team-shooting-report
+   git clone https://github.com/your-repository/soccer-match-analysis.git
+   cd soccer-match-analysis
