@@ -37,8 +37,12 @@ match_id = selected_match["match_id"]
 # Step 3: Analyze Events
 events = get_events(match_id)
 
+# Toggle for Team Selection
+home_team = selected_match["home_team"]
+away_team = selected_match["away_team"]
+team = st.radio("Select Team", [home_team, away_team])
+
 # Filter events for the selected team
-team = st.sidebar.selectbox("Select Team", [selected_match["home_team"], selected_match["away_team"]])
 team_events = events[events["team"] == team]
 
 # Team Stats
@@ -61,14 +65,17 @@ shot_data = team_events[team_events["type"] == "Shot"].dropna(subset=["location"
 shot_data["x"] = shot_data["location"].apply(lambda loc: loc[0] if isinstance(loc, list) else None)
 shot_data["y"] = shot_data["location"].apply(lambda loc: loc[1] if isinstance(loc, list) else None)
 
-pitch = Pitch(pitch_type="statsbomb", orientation="horizontal", line_color="black", figsize=(10, 6))
-fig, ax = pitch.draw()
+if not shot_data.empty:
+    pitch = Pitch(pitch_type="statsbomb", orientation="horizontal", line_color="black", figsize=(10, 6))
+    fig, ax = pitch.draw()
 
-for _, shot in shot_data.iterrows():
-    color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
-    pitch.scatter(shot["x"], shot["y"], s=100, color=color, ax=ax)
+    for _, shot in shot_data.iterrows():
+        color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
+        pitch.scatter(shot["x"], shot["y"], s=100, color=color, ax=ax)
 
-st.pyplot(fig)
+    st.pyplot(fig)
+else:
+    st.write("No shot data available for this match.")
 
 # Visualization: Shot Outcomes on Goal
 st.subheader("Shot Outcomes on Goal")
@@ -76,11 +83,14 @@ goal_data = team_events[team_events["type"] == "Shot"].dropna(subset=["shot_end_
 goal_data["x"] = goal_data["shot_end_location"].apply(lambda loc: loc[0] if isinstance(loc, list) else None)
 goal_data["y"] = goal_data["shot_end_location"].apply(lambda loc: loc[1] if isinstance(loc, list) else None)
 
-goal_pitch = Pitch(goal_type="statsbomb", orientation="horizontal", line_color="black", figsize=(10, 6))
-fig, ax = goal_pitch.draw()
+if not goal_data.empty:
+    goal_pitch = Pitch(pitch_type="statsbomb", orientation="horizontal", line_color="black", figsize=(10, 6))
+    fig, ax = goal_pitch.draw()
 
-for _, shot in goal_data.iterrows():
-    color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
-    goal_pitch.scatter(shot["x"], shot["y"], s=100, color=color, ax=ax)
+    for _, shot in goal_data.iterrows():
+        color = "green" if shot["shot_outcome"] == "Goal" else "yellow" if shot["shot_outcome"] == "On Target" else "red"
+        goal_pitch.scatter(shot["x"], shot["y"], s=100, color=color, ax=ax)
 
-st.pyplot(fig)
+    st.pyplot(fig)
+else:
+    st.write("No goal data available for this match.")
