@@ -4,7 +4,7 @@ from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-# Mock functions to simulate loading data
+# Mock data-loading functions
 def load_competitions():
     return pd.DataFrame({
         "competition": ["Premier League", "La Liga", "Bundesliga"],
@@ -12,29 +12,22 @@ def load_competitions():
     })
 
 def load_matches(competition, season):
-    if competition == "Premier League" and season == "2022/2023":
-        return pd.DataFrame({
-            "match_id": [1, 2],
-            "home_team": ["Manchester City", "Chelsea"],
-            "away_team": ["Liverpool", "Arsenal"],
-            "score": ["3-1", "2-2"],
-        })
-    elif competition == "La Liga" and season == "2022/2023":
-        return pd.DataFrame({
-            "match_id": [3, 4],
-            "home_team": ["Real Madrid", "Barcelona"],
-            "away_team": ["Atletico Madrid", "Sevilla"],
-            "score": ["2-0", "1-1"],
-        })
-    elif competition == "Bundesliga" and season == "2023/2024":
-        return pd.DataFrame({
-            "match_id": [5, 6],
-            "home_team": ["Bayern Munich", "Dortmund"],
-            "away_team": ["RB Leipzig", "Leverkusen"],
-            "score": ["4-2", "3-3"],
-        })
-    else:
-        return pd.DataFrame()
+    matches = {
+        "Premier League_2022/2023": [
+            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool", "score": "3-1"},
+            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal", "score": "2-2"}
+        ],
+        "La Liga_2022/2023": [
+            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid", "score": "2-0"},
+            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla", "score": "1-1"}
+        ],
+        "Bundesliga_2023/2024": [
+            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig", "score": "4-2"},
+            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen", "score": "3-3"}
+        ],
+    }
+    key = f"{competition}_{season}"
+    return pd.DataFrame(matches.get(key, []))
 
 def load_team_events(team_name, match_id):
     if team_name and match_id:
