@@ -48,14 +48,13 @@ def plot_field_shots(events):
     pitch.draw(ax=ax)
 
     for _, row in events.iterrows():
-        # Determine shot color
-        color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
+        # Set color: green for goal, red for missed/saved
+        color = "green" if row["outcome"] == "goal" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
 
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
-        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
-        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
+        Rectangle((0, 0), 1, 1, color="red", label="Missed/Saved"),
     ]
     ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
     ax.set_title("Shot Location(s) On Field", fontsize=14)
@@ -72,17 +71,13 @@ def plot_goal_shots(events):
     ax.set_ylim(-1, goal_height + 1)
     
     for _, row in events.iterrows():
-        # Determine dot color based on shot outcome
-        if 0 <= row["goal_x"] <= goal_width and 0 <= row["goal_y"] <= goal_height:
-            color = "green" if row["outcome"] == "goal" else "blue"
-        else:
-            color = "red"
+        # Set color: green for goal, red for missed/saved
+        color = "green" if row["outcome"] == "goal" else "red"
         ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
     
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
-        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
-        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
+        Rectangle((0, 0), 1, 1, color="red", label="Missed/Saved"),
     ]
     ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
     ax.set_title("Shot Location(s) On Goal", fontsize=14)
