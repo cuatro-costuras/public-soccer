@@ -2,4 +2,4 @@ pandas
 statsbombpy
 mplsoccer
 streamlit
-plotly
+matplotlib
