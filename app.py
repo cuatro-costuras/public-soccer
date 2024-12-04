@@ -37,7 +37,6 @@ def load_matches(competition, season):
         return pd.DataFrame()
 
 def load_team_events(team_name, match_id):
-    # Simulated team-specific event data
     if team_name and match_id:
         return pd.DataFrame({
             "x": [30, 50, 70],
