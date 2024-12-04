@@ -14,16 +14,16 @@ def load_competitions():
 def load_matches(competition, season):
     matches = {
         "Premier League_2022/2023": [
-            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool", "score": "3-1"},
-            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal", "score": "2-2"}
+            {"match_id": 1, "home_team": "Manchester City", "away_team": "Liverpool", "home_score": 3, "away_score": 1},
+            {"match_id": 2, "home_team": "Chelsea", "away_team": "Arsenal", "home_score": 2, "away_score": 2}
         ],
         "La Liga_2022/2023": [
-            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid", "score": "2-0"},
-            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla", "score": "1-1"}
+            {"match_id": 3, "home_team": "Real Madrid", "away_team": "Atletico Madrid", "home_score": 2, "away_score": 0},
+            {"match_id": 4, "home_team": "Barcelona", "away_team": "Sevilla", "home_score": 1, "away_score": 1}
         ],
         "Bundesliga_2023/2024": [
-            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig", "score": "4-2"},
-            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen", "score": "3-3"}
+            {"match_id": 5, "home_team": "Bayern Munich", "away_team": "RB Leipzig", "home_score": 4, "away_score": 2},
+            {"match_id": 6, "home_team": "Dortmund", "away_team": "Leverkusen", "home_score": 3, "away_score": 3}
         ],
     }
     key = f"{competition}_{season}"
@@ -47,7 +47,7 @@ def load_team_events(team_name, match_id):
     team_events = events[(events["team"] == team_name) & (events["match_id"] == match_id)]
     return team_events
 
-# Remaining visualizations and metrics
+# Visualization Functions
 def plot_field_shots(events):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
@@ -100,17 +100,17 @@ if selected_league:
 
     matches_df = load_matches(selected_league, selected_season)
     if not matches_df.empty:
-        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
+        match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['home_score']}-{row['away_score']})", axis=1)
         selected_match = st.sidebar.selectbox("Select Match", match_labels)
 
         if selected_match:
             selected_row = matches_df.loc[matches_df.apply(
-                lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1) == selected_match].iloc[0]
+                lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['home_score']}-{row['away_score']})", axis=1) == selected_match].iloc[0]
             home_team = selected_row["home_team"]
             away_team = selected_row["away_team"]
             match_id = selected_row["match_id"]
 
-            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {selected_row['score']}")
+            st.markdown(f"### Match: {home_team} vs {away_team} | Score: {selected_row['home_score']}-{selected_row['away_score']}")
 
             # Team Selection
             st.markdown("### Select Team to Analyze")
@@ -129,15 +129,15 @@ if selected_league:
                 col1, col2, col3, col4, col5 = st.columns(5)
                 total_shots = len(team_events)
                 shots_on_target = team_events[team_events["outcome"].isin(["goal", "saved"])].shape[0]
-                shot_conversion_rate = f"{(team_events[team_events['outcome'] == 'goal'].shape[0] / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
                 goals = team_events[team_events["outcome"] == "goal"].shape[0]
-                expected_goals = 1.25  # Placeholder
+                expected_goals = team_events[team_events["outcome"] == "goal"].shape[0] * 0.35  # Placeholder for xG calculation
+                shot_conversion_rate = f"{(goals / total_shots * 100):.2f}%" if total_shots > 0 else "0%"
 
                 col1.metric("Total Shots", total_shots)
                 col2.metric("Shots on Target", shots_on_target)
                 col3.metric("Shot Conversion Rate", shot_conversion_rate)
                 col4.metric("Goals", goals)
-                col5.metric("Expected Goals (xG)", expected_goals)
+                col5.metric("Expected Goals (xG)", f"{expected_goals:.2f}")
 
                 # Visualizations
                 st.markdown("### Shot Location(s) On Field")
