@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 # Mock function to load competitions and matches
 def load_competitions():
@@ -44,7 +45,12 @@ def plot_field_shots(events):
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-    ax.legend(['Goal', 'Saved', 'Missed'], loc='upper left', fontsize=10, markerscale=1.5)
+    legend_patches = [
+        Rectangle((0, 0), 1, 1, color="green", label="Goal"),
+        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
+        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
+    ]
+    ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
     ax.set_title("Shot Location(s) On Field", fontsize=14)
     return fig
 
@@ -61,7 +67,12 @@ def plot_goal_shots(events):
     for _, row in events.iterrows():
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["goal_x"], row["goal_y"], c=color, edgecolors='black', s=100)
-    ax.legend(['Goal', 'Saved', 'Missed'], loc='upper left', fontsize=10, markerscale=1.5)
+    legend_patches = [
+        Rectangle((0, 0), 1, 1, color="green", label="Goal"),
+        Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
+        Rectangle((0, 0), 1, 1, color="red", label="Missed"),
+    ]
+    ax.legend(handles=legend_patches, loc='upper left', fontsize=10)
     ax.set_title("Shot Location(s) On Goal", fontsize=14)
     return fig
 
@@ -93,12 +104,11 @@ if selected_league:
         # Team Selection
         st.markdown("### Select Team to Analyze")
         col1, col2 = st.columns(2)
+        selected_team = None
         if col1.button(home_team):
             selected_team = home_team
-        elif col2.button(away_team):
+        if col2.button(away_team):
             selected_team = away_team
-        else:
-            selected_team = None
 
         if selected_team:
             st.markdown(f"### Analyzing: {selected_team}")
