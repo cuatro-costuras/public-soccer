@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 from statsbombpy import sb
@@ -9,161 +8,145 @@ st.set_page_config(page_title="Soccer Team Shooting Report", layout="wide")
 
 # Functions to load and process data
 @st.cache_data
+def load_competitions():
+    return sb.competitions()
+
+@st.cache_data
 def load_matches(competition_id, season_id):
-    try:
-        matches = sb.matches(competition_id=competition_id, season_id=season_id)
-        return matches
-    except Exception as e:
-        st.error(f"Error loading matches: {e}")
-        return pd.DataFrame()
+    return sb.matches(competition_id=competition_id, season_id=season_id)
 
 @st.cache_data
 def load_events(match_id):
-    try:
-        events = sb.events(match_id=match_id)
-        return events
-    except Exception as e:
-        st.error(f"Error loading events: {e}")
-        return pd.DataFrame()
+    return sb.events(match_id=match_id)
 
-# Helper Function for Coordinate Extraction
-def extract_coordinates(location_column, index):
-    return location_column.apply(lambda loc: loc[index] if isinstance(loc, list) and len(loc) > index else np.nan)
+# Load Competitions
+competitions = load_competitions()
 
-# Helper Function for Drawing Field
-def draw_soccer_field(shots):
-    fig = go.Figure()
+# Sidebar for competition and season selection
+st.sidebar.header("Select Competition and Season")
+competition_options = competitions[["competition_name", "season_name", "competition_id", "season_id"]]
+selected_competition = st.sidebar.selectbox("Competition", competitions["competition_name"].unique())
+available_seasons = competitions[competitions["competition_name"] == selected_competition]["season_name"]
+selected_season = st.sidebar.selectbox("Season", available_seasons)
 
-    # Draw the field
-    fig.add_shape(type="rect", x0=0, x1=120, y0=0, y1=80, line=dict(color="black", width=2))
-    fig.add_shape(type="circle", x0=60 - 9.15, y0=40 - 9.15, x1=60 + 9.15, y1=40 + 9.15, line=dict(color="black", width=2))
-    fig.add_shape(type="rect", x0=0, x1=6, y0=30, y1=50, line=dict(color="black", width=2))
-    fig.add_shape(type="rect", x0=114, x1=120, y0=30, y1=50, line=dict(color="black", width=2))
+# Filter competition and season
+competition_data = competition_options[
+    (competition_options["competition_name"] == selected_competition) &
+    (competition_options["season_name"] == selected_season)
+]
+if not competition_data.empty:
+    competition_id = competition_data["competition_id"].values[0]
+    season_id = competition_data["season_id"].values[0]
+    matches = load_matches(competition_id, season_id)
 
-    # Add shots
-    fig.add_trace(go.Scatter(
-        x=shots["x"], y=shots["y"],
-        mode="markers",
-        marker=dict(size=10, color=shots["outcome_color"]),
-        text=shots["shot_outcome"],
-        hoverinfo="text"
-    ))
-
-    fig.update_layout(
-        xaxis=dict(range=[0, 120], title="Field Length (meters)"),
-        yaxis=dict(range=[0, 80], title="Field Width (meters)"),
-        height=600,
-        showlegend=False,
-        plot_bgcolor="white"
-    )
-    return fig
-
-# Helper Function for Drawing Goal
-def draw_soccer_goal(shots):
-    fig = go.Figure()
-
-    # Draw the goal area
-    fig.add_shape(type="rect", x0=-10, x1=10, y0=0, y1=8, line=dict(color="black", width=2))
-
-    # Add shots
-    fig.add_trace(go.Scatter(
-        x=shots["goal_x"], y=shots["goal_y"],
-        mode="markers",
-        marker=dict(size=10, color=shots["outcome_color"]),
-        text=shots["shot_outcome"],
-        hoverinfo="text"
-    ))
-
-    fig.update_layout(
-        xaxis=dict(range=[-10, 10], title="Goal Width (meters)"),
-        yaxis=dict(range=[0, 8], title="Goal Height (meters)"),
-        height=400,
-        showlegend=False,
-        plot_bgcolor="white"
-    )
-    return fig
-
-# Main App
-st.sidebar.title("Soccer Team Shooting Report")
-
-# Competition and Season Selection
-competition_id = st.sidebar.selectbox("Select Competition", options=[11], format_func=lambda x: "German Bundesliga")
-season_id = st.sidebar.selectbox("Select Season", options=[4], format_func=lambda x: "2023/2024")
-
-matches = load_matches(competition_id, season_id)
-
-if matches.empty:
-    st.error("No matches found for the selected competition and season.")
-else:
-    # Format match options for dropdown
-    match_options = matches[["home_team", "away_team", "match_id"]]
-    match_options["match_name"] = match_options["home_team"] + " vs " + match_options["away_team"]
-    selected_match = st.sidebar.selectbox(
-        "Select Match",
-        options=match_options["match_id"],
-        format_func=lambda x: match_options.loc[match_options["match_id"] == x, "match_name"].iloc[0]
-    )
-
-    events = load_events(selected_match)
-
-    if events.empty:
-        st.error("No events found for the selected match.")
+    # Match Selection
+    st.sidebar.header("Select Match")
+    if matches.empty:
+        st.sidebar.error("No matches available for this competition and season.")
     else:
-        # Team Selection
-        team = st.sidebar.radio(
-            "Select Team",
-            options=events["team"].unique(),
-            format_func=lambda x: x
-        )
-        team_data = events[events["team"] == team]
+        matches["match_name"] = matches["home_team"] + " vs " + matches["away_team"]
+        matches_filtered = matches[matches["season_id"] == season_id]
+        selected_match = st.sidebar.selectbox("Match", matches_filtered["match_name"])
+        match_data = matches_filtered[matches_filtered["match_name"] == selected_match]
+        if not match_data.empty:
+            match_id = match_data["match_id"].values[0]
+            events = load_events(match_id)
 
-        # Metrics
-        st.title(f"Shooting Report for {team}")
-        shots = team_data[team_data["type"] == "Shot"]
+            # Team Selection
+            st.sidebar.header("Select Team")
+            teams = events["team"].unique()
+            selected_team = st.sidebar.radio("Team", teams)
 
-        if shots.empty:
-            st.warning("No shots found for this team in the selected match.")
-        else:
-            # Process and Validate Shot Data
-            shots["x"] = extract_coordinates(shots["location"], 0)
-            shots["y"] = extract_coordinates(shots["location"], 1)
-            shots = shots.dropna(subset=["x", "y"])  # Remove invalid coordinates
+            # Filter events for the selected team
+            team_data = events[events["team"] == selected_team]
 
-            # Add color mapping for shot outcomes
-            outcome_color_map = {
-                "Goal": "green",
-                "On Target": "yellow",
-                "Off Target": "red",
-                "Blocked": "orange"
-            }
-            shots["outcome_color"] = shots["shot_outcome"].map(outcome_color_map).fillna("grey")
+            # Metrics Section
+            st.title(f"{selected_team} Shooting Report")
+            st.header(f"Match: {selected_match}")
 
-            # Calculate Metrics
-            shots_taken = len(shots)
-            shots_on_target = len(shots[shots["shot_outcome"].isin(["On Target", "Goal"])])
-            shot_conversion_rate = len(shots[shots["shot_outcome"] == "Goal"]) / shots_taken * 100 if shots_taken > 0 else 0
-            goals_per_game = len(shots[shots["shot_outcome"] == "Goal"])
-            expected_goals = shots["shot_statsbomb_xg"].sum()
+            total_shots = len(team_data[team_data["type"] == "Shot"])
+            shots_on_target = len(
+                team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "On Target")]
+            )
+            goals = len(
+                team_data[(team_data["type"] == "Shot") & (team_data["shot_outcome"] == "Goal")]
+            )
+            expected_goals = team_data["shot_statsbomb_xg"].sum()
 
-            # Display Metrics
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Shots Taken", shots_taken)
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Shots", total_shots)
             col2.metric("Shots on Target", shots_on_target)
-            col3.metric("Shot Conversion Rate", f"{shot_conversion_rate:.2f}%")
-            col4.metric("Goals", goals_per_game)
-            col5.metric("Expected Goals (xG)", f"{expected_goals:.2f}")
+            col3.metric("Goals", goals)
+            col4.metric("Expected Goals (xG)", f"{expected_goals:.2f}")
 
-            # Visualize Shot Locations on Field
-            st.subheader("Shot Locations on Field")
-            field_fig = draw_soccer_field(shots)
-            st.plotly_chart(field_fig, use_container_width=True)
+            # Visualization: Shot Locations on the Pitch
+            st.subheader("Shot Locations on Pitch")
+            pitch_shots = team_data[team_data["type"] == "Shot"]
 
-            # Visualize Shot Outcomes on Goal
-            st.subheader("Shot Outcomes on Goal")
-            goal_shots = shots[shots["shot_end_location"].notnull()]
-            goal_shots["goal_x"] = extract_coordinates(goal_shots["shot_end_location"], 0)
-            goal_shots["goal_y"] = extract_coordinates(goal_shots["shot_end_location"], 1)
-            goal_shots = goal_shots.dropna(subset=["goal_x", "goal_y"])  # Remove invalid goal locations
+            # Validate shot locations
+            pitch_shots = pitch_shots[pitch_shots["location"].notnull()]
+            pitch_shots = pitch_shots[pitch_shots["location"].apply(lambda loc: len(loc) == 2)]
+            if not pitch_shots.empty:
+                pitch_shots["x"] = pitch_shots["location"].apply(lambda loc: loc[0])
+                pitch_shots["y"] = pitch_shots["location"].apply(lambda loc: loc[1])
+                pitch_shots["color"] = pitch_shots["shot_outcome"].map({
+                    "Goal": "green", 
+                    "On Target": "yellow", 
+                    "Off Target": "red"
+                })
 
-            goal_fig = draw_soccer_goal(goal_shots)
-            st.plotly_chart(goal_fig, use_container_width=True)
+                pitch_fig = go.Figure()
+                pitch_fig.add_trace(
+                    go.Scatter(
+                        x=pitch_shots["x"],
+                        y=pitch_shots["y"],
+                        mode="markers",
+                        marker=dict(size=10, color=pitch_shots["color"]),
+                        text=pitch_shots["shot_outcome"],
+                        hoverinfo="text"
+                    )
+                )
+                pitch_fig.update_layout(
+                    title="Shots on the Pitch",
+                    xaxis=dict(title="Width of the Pitch (yards)", range=[0, 120]),
+                    yaxis=dict(title="Length of the Pitch (yards)", range=[0, 80]),
+                    template="plotly_white",
+                    showlegend=False
+                )
+                st.plotly_chart(pitch_fig)
+
+            # Visualization: Shot Locations in the Goal
+            st.subheader("Shot Locations in the Goal")
+            goal_shots = team_data[team_data["type"] == "Shot"]
+            goal_shots = goal_shots[goal_shots["shot_end_location"].notnull()]
+            goal_shots = goal_shots[goal_shots["shot_end_location"].apply(lambda loc: len(loc) >= 2)]
+            if not goal_shots.empty:
+                goal_shots["x"] = goal_shots["shot_end_location"].apply(lambda loc: loc[0])
+                goal_shots["y"] = goal_shots["shot_end_location"].apply(lambda loc: loc[1])
+                goal_shots["color"] = goal_shots["shot_outcome"].map({
+                    "Goal": "green", 
+                    "On Target": "yellow", 
+                    "Off Target": "red"
+                })
+
+                goal_fig = go.Figure()
+                goal_fig.add_trace(
+                    go.Scatter(
+                        x=goal_shots["x"],
+                        y=goal_shots["y"],
+                        mode="markers",
+                        marker=dict(size=10, color=goal_shots["color"]),
+                        text=goal_shots["shot_outcome"],
+                        hoverinfo="text"
+                    )
+                )
+                goal_fig.update_layout(
+                    title="Shots in the Goal",
+                    xaxis=dict(title="Width of the Goal (yards)", range=[-10, 10]),
+                    yaxis=dict(title="Height of the Goal (yards)", range=[0, 8]),
+                    template="plotly_white",
+                    showlegend=False
+                )
+                st.plotly_chart(goal_fig)
+            else:
+                st.warning("No valid shot end locations available.")
