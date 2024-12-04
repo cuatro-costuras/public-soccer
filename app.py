@@ -13,6 +13,8 @@ def load_matches():
         "season": ["2022/2023", "2022/2023", "2023/2024", "2023/2024"],
         "home_team": ["Chelsea", "Barcelona", "Bayern Munich", "Juventus"],
         "away_team": ["Arsenal", "Real Madrid", "Dortmund", "Inter Milan"],
+        "home_score": [2, 1, 3, 0],
+        "away_score": [1, 2, 2, 2]
     })
 
 @st.cache_data
@@ -22,6 +24,7 @@ def load_events(match_id):
         "type": ["Shot", "Pass", "Shot", "Shot"],
         "team": ["Chelsea", "Chelsea", "Arsenal", "Arsenal"],
         "location": [[30, 40], [50, 60], [40, 20], [60, 30]],
+        "shot_end_location": [[3, 2], [None], [1, -1], [2, 1]],
         "shot_statsbomb_xg": [0.5, None, 0.8, 0.2],
         "shot_outcome": ["Goal", None, "Missed", "Saved"],
     })
@@ -45,8 +48,8 @@ if not filtered_matches.empty:
     )
     selected_match = filtered_matches.loc[match_row]
 
-    # Display selected match details
-    st.sidebar.write(f"**Selected Match:** {selected_match['home_team']} vs {selected_match['away_team']}")
+    # Display match score
+    st.title(f"{selected_match['home_team']} {selected_match['home_score']} - {selected_match['away_score']} {selected_match['away_team']}")
 
     # Step 2: Load Events for Selected Match
     events = load_events(selected_match["match_id"])
@@ -76,11 +79,15 @@ if not filtered_matches.empty:
             shots_on_target = len(shot_data[shot_data["shot_outcome"].isin(["Goal", "Saved"])])
             goals = len(shot_data[shot_data["shot_outcome"] == "Goal"])
             xg = shot_data["shot_statsbomb_xg"].sum()
+            shot_conversion_rate = goals / total_shots * 100 if total_shots > 0 else 0
 
-            st.write(f"**Total Shots:** {total_shots}")
-            st.write(f"**Shots on Target:** {shots_on_target}")
-            st.write(f"**Goals:** {goals}")
-            st.write(f"**Expected Goals (xG):** {xg:.2f}")
+            # Display metrics as boxes
+            box1, box2, box3, box4, box5 = st.columns(5)
+            box1.metric("Total Shots", total_shots)
+            box2.metric("Shots on Target", shots_on_target)
+            box3.metric("Shot Conversion Rate", f"{shot_conversion_rate:.2f}%")
+            box4.metric("Goals", goals)
+            box5.metric("Expected Goals (xG)", f"{xg:.2f}")
 
             # Step 4: Visualize Shots on Soccer Pitch
             st.write("### Shot Locations on Field")
@@ -104,19 +111,24 @@ if not filtered_matches.empty:
 
             # Step 5: Visualize Shots on Goal
             st.write("### Shot Locations on Goal")
-            goal_fig, goal_ax = plt.subplots(figsize=(6, 4))
-            pitch_goal = Pitch(goal_type="box", line_color="black", pitch_type="statsbomb")
-            pitch_goal.draw(ax=goal_ax)
+            fig_goal, ax_goal = plt.subplots(figsize=(6, 4))
+            ax_goal.set_xlim(-3, 3)
+            ax_goal.set_ylim(0, 2.5)
 
             for _, shot in shot_data.iterrows():
-                x, y = shot["location"]
-                outcome = shot["shot_outcome"]
-                color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
-                pitch_goal.scatter(x, y, s=100, color=color, ax=goal_ax)
+                if shot["shot_end_location"]:
+                    x, y = shot["shot_end_location"]
+                    outcome = shot["shot_outcome"]
+                    color = "green" if outcome == "Goal" else "red" if outcome == "Missed" else "blue"
+                    ax_goal.scatter(x, y, color=color, s=100)
 
-            st.pyplot(goal_fig)
+            ax_goal.set_title("Shot Placement in Goal")
+            ax_goal.set_xlabel("Width of Goal")
+            ax_goal.set_ylabel("Height of Goal")
 
-            # Add legend for colors
+            st.pyplot(fig_goal)
+
+            # Add legend for goal visualization
             st.write("#### Key for Goal Visualization")
             st.write("- **Green**: Goal")
             st.write("- **Red**: Missed")
