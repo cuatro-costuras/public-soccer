@@ -1,39 +1,57 @@
-# Soccer Player Shooting Tendencies App
+# Soccer Team Shooting Report App
 
 ## Overview
-This project uses StatsBomb data to analyze player shooting tendencies in professional soccer matches. The app provides visualizations and metrics for individual players, showcasing their shooting performance and tendencies during a match.
+The **Soccer Team Shooting Report App** is an interactive tool designed to analyze shooting performance for professional soccer teams using **StatsBomb Open Data**. The app allows users to explore team-level shooting tendencies in specific matches, showcasing shooting statistics and visualizing shot locations on the pitch and within the goal.
 
-### Features
-1. **Team and Player Selection**:
-   - Toggle to select a team's roster for a specific match.
-   - Select a player to view their shooting tendencies.
+This updated version features enhanced dropdown functionality for selecting competitions, seasons, and matches, and introduces improved visualizations of shots using **Plotly**.
 
-2. **Player Profile**:
-   - Display key metrics such as:
-     - Shots Taken
-     - Shots on Target
-     - Shot Conversion Rate
-     - Goals per Game
-     - Expected Goals (xG)
+---
 
-3. **Visualizations**:
-   - **Soccer Field Plot**: Shows where the player was positioned when they took each shot.
-   - **Goal Plot**: Displays where the shots landed in the goal (or missed).
+## Features
+1. **Competition and Season Selection:**
+   - Users can choose from available competitions and seasons.
+   - Matches are dynamically filtered based on the selected competition and season.
 
-### Data Source
-Data is sourced using the [StatsBombPy](https://github.com/statsbomb/statsbombpy) library, which provides access to professional soccer data.
+2. **Match and Team Selection:**
+   - Dropdowns allow users to select a specific match.
+   - Radio buttons enable selection between the home and away teams for the chosen match.
 
-### Requirements
-- **Python 3.8 or later**
-- Dependencies:
-  - `pandas`
-  - `statsbombpy`
-  - `mplsoccer`
+3. **Shooting Metrics:**
+   - Key shooting metrics are displayed at the top of the app:
+     - **Total Shots**
+     - **Shots on Target**
+     - **Shot Conversion Rate**
+     - **Goals per Game**
+     - **Expected Goals (xG)**
+
+4. **Shot Visualizations:**
+   - **Pitch Visualization:**
+     - A soccer pitch graphic shows the locations where shots were taken.
+     - Shot outcomes are color-coded:
+       - Green: Goal
+       - Yellow: On target but saved
+       - Red: Missed or off target
+   - **Goal Visualization:**
+     - A goal graphic shows the final placement of shots within or outside the goal.
+     - Outcomes are similarly color-coded for clarity.
+
+5. **Dynamic Filtering:**
+   - Visualizations and metrics dynamically update based on the selected team and match.
+
+---
+
+## Requirements
+- **Python**: 3.8+
+- **Libraries**:
   - `streamlit`
+  - `statsbombpy`
+  - `pandas`
   - `plotly`
 
-### Installation
-1. Clone this repository:
+---
+
+## Usage
+1. Clone this repository to your local machine:
    ```bash
-   git clone https://github.com/<your-username>/<your-repository>.git
-   cd <your-repository>
+   git clone https://github.com/your-username/soccer-team-shooting-report.git
+   cd soccer-team-shooting-report
