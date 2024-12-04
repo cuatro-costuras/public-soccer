@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, FancyArrow
 
 # Mock data-loading functions for matches and events
 def load_competitions():
@@ -42,18 +42,25 @@ def load_team_events(team_name, match_id):
     return events[(events["team"] == team_name) & (events["match_id"] == match_id)]
 
 # Visualization Functions
-def plot_field_shots(events, attacking_goal, defending_goal):
+def plot_field_shots(events):
     fig, ax = plt.subplots(figsize=(12, 8))
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
     pitch.draw(ax=ax)
 
+    # Goal centers
+    left_goal_center = (0, 34)
+    right_goal_center = (105, 34)
+
     for _, row in events.iterrows():
+        # Determine shot color
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-    
-    ax.text(attacking_goal[0], attacking_goal[1], "Attacking Goal", fontsize=12, color="white", ha="center")
-    ax.text(defending_goal[0], defending_goal[1], "Defending Goal", fontsize=12, color="white", ha="center")
-    
+
+        # Determine arrow direction
+        goal_center = right_goal_center if row["x"] > 52.5 else left_goal_center
+        ax.add_patch(FancyArrow(row["x"], row["y"], goal_center[0] - row["x"], goal_center[1] - row["y"],
+                                color=color, width=0.2, head_width=1.5, length_includes_head=True))
+
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
         Rectangle((0, 0), 1, 1, color="blue", label="Saved"),
@@ -119,14 +126,10 @@ if selected_league:
             st.markdown("### Select Team to Analyze")
             col1, col2 = st.columns(2)
             selected_team = None
-            attacking_goal = None
-            defending_goal = None
             if col1.button(home_team):
                 selected_team = home_team
-                attacking_goal, defending_goal = (105, 34), (0, 34)
             if col2.button(away_team):
                 selected_team = away_team
-                attacking_goal, defending_goal = (0, 34), (105, 34)
 
             if selected_team:
                 team_events = load_team_events(selected_team, match_id)
@@ -150,7 +153,7 @@ if selected_league:
                 # Visualizations
                 col1, col2 = st.columns(2)
                 with col1:
-                    field_fig = plot_field_shots(team_events, attacking_goal, defending_goal)
+                    field_fig = plot_field_shots(team_events)
                     st.pyplot(field_fig)
                 with col2:
                     goal_fig = plot_goal_shots(team_events)
