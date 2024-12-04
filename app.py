@@ -3,7 +3,7 @@ import pandas as pd
 from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
 
-# Mock functions to load competitions, matches, and events dynamically
+# Mock function to load competitions and matches
 def load_competitions():
     return pd.DataFrame({
         "competition": ["Premier League", "La Liga", "Bundesliga"],
@@ -13,18 +13,21 @@ def load_competitions():
 def load_matches(competition, season):
     if competition == "Premier League" and season == "2022/2023":
         return pd.DataFrame({
+            "match_id": [1, 2],
             "home_team": ["Manchester City", "Chelsea"],
             "away_team": ["Liverpool", "Arsenal"],
             "score": ["3-1", "2-2"],
         })
     else:
         return pd.DataFrame({
+            "match_id": [3, 4],
             "home_team": ["Team A", "Team B"],
             "away_team": ["Team C", "Team D"],
             "score": ["0-0", "1-1"],
         })
 
-def load_team_events(team_name):
+def load_team_events(team_name, match_id):
+    # Simulate team events dynamically for the match and team
     return pd.DataFrame({
         "x": [30, 50, 70],
         "y": [20, 40, 60],
@@ -65,7 +68,7 @@ def plot_goal_shots(events):
 # Streamlit App
 st.title("Soccer Match Analysis")
 
-# Sidebar: Step 1 - Select League and Season
+# Sidebar: Select League, Season, and Match
 st.sidebar.title("Match Analysis")
 competitions_df = load_competitions()
 league_options = competitions_df["competition"].tolist()
@@ -75,7 +78,6 @@ if selected_league:
     season_options = competitions_df[competitions_df["competition"] == selected_league]["seasons"].values[0]
     selected_season = st.sidebar.selectbox("Select Season", season_options)
 
-    # Step 2: Select Match
     matches_df = load_matches(selected_league, selected_season)
     match_labels = matches_df.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Score: {row['score']})", axis=1)
     selected_match = st.sidebar.selectbox("Select Match", match_labels)
@@ -88,20 +90,21 @@ if selected_league:
 
         st.markdown(f"### Match: {home_team} vs {away_team} | Score: {score}")
 
-        # Step 3: Select Team
+        # Team Selection
         st.markdown("### Select Team to Analyze")
         col1, col2 = st.columns(2)
-        selected_team = None
         if col1.button(home_team):
             selected_team = home_team
         elif col2.button(away_team):
             selected_team = away_team
+        else:
+            selected_team = None
 
         if selected_team:
             st.markdown(f"### Analyzing: {selected_team}")
 
             # Load Events for the Selected Team
-            team_events = load_team_events(selected_team)
+            team_events = load_team_events(selected_team, selected_row["match_id"])
 
             # Performance Metrics
             st.markdown("### Performance Metrics")
@@ -126,7 +129,6 @@ if selected_league:
             st.markdown("### Shot Location(s) On Goal")
             goal_fig = plot_goal_shots(team_events)
             st.pyplot(goal_fig)
-
         else:
             st.warning("Please select a team to analyze.")
     else:
