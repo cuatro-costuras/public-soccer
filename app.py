@@ -45,9 +45,8 @@ if not competition_data.empty:
         st.sidebar.error("No matches available for this competition and season.")
     else:
         matches["match_name"] = matches["home_team"] + " vs " + matches["away_team"]
-        matches_filtered = matches[matches["season_id"] == season_id]
-        selected_match = st.sidebar.selectbox("Match", matches_filtered["match_name"])
-        match_data = matches_filtered[matches_filtered["match_name"] == selected_match]
+        selected_match = st.sidebar.selectbox("Match", matches["match_name"].unique())
+        match_data = matches[matches["match_name"] == selected_match]
         if not match_data.empty:
             match_id = match_data["match_id"].values[0]
             events = load_events(match_id)
