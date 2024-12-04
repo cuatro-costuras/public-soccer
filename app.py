@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from mplsoccer import VerticalPitch
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, FancyArrow
+from matplotlib.patches import Rectangle
 
 # Mock data-loading functions for matches and events
 def load_competitions():
@@ -47,19 +47,10 @@ def plot_field_shots(events):
     pitch = VerticalPitch(pitch_color='grass', line_color='white', pitch_type='statsbomb')
     pitch.draw(ax=ax)
 
-    # Goal centers
-    left_goal_center = (0, 34)
-    right_goal_center = (105, 34)
-
     for _, row in events.iterrows():
         # Determine shot color
         color = "green" if row["outcome"] == "goal" else "blue" if row["outcome"] == "saved" else "red"
         ax.scatter(row["x"], row["y"], c=color, edgecolors='black', s=100)
-
-        # Determine arrow direction
-        goal_center = right_goal_center if row["x"] > 52.5 else left_goal_center
-        ax.add_patch(FancyArrow(row["x"], row["y"], goal_center[0] - row["x"], goal_center[1] - row["y"],
-                                color=color, width=0.2, head_width=1.5, length_includes_head=True))
 
     legend_patches = [
         Rectangle((0, 0), 1, 1, color="green", label="Goal"),
