@@ -1,62 +1,71 @@
 import pandas as pd
 import streamlit as st
+from statsbombpy import sb
 import plotly.graph_objects as go
 
-# Load data from the existing repository
+# Cache data to avoid repeated fetching
 @st.cache_data
-def load_data():
-    try:
-        return pd.read_csv("data/merged_data.csv")
-    except FileNotFoundError:
-        st.error("The data file is missing. Please ensure 'merged_data.csv' is in the 'data' folder.")
-        return pd.DataFrame()
+def fetch_and_preprocess_data():
+    # Fetch Bundesliga competition details
+    competitions = sb.competitions()
+    bundesliga = competitions[(competitions['competition_name'] == 'Bundesliga') & 
+                               (competitions['season_name'] == '2023/2024')].iloc[0]
+    competition_id = bundesliga['competition_id']
+    season_id = bundesliga['season_id']
 
-data = load_data()
+    # Fetch matches for the Bundesliga 2023/2024 season
+    matches = sb.matches(competition_id=competition_id, season_id=season_id)
 
-if not data.empty:
-    # Sidebar for filtering
-    st.sidebar.header("Filters")
-    league = st.sidebar.selectbox("Select League", options=["1. Bundesliga"])  # Assuming one league for now
-    team = st.sidebar.selectbox("Select Team", options=data['team_name'].unique())
-    player = st.sidebar.selectbox("Select Player", options=data[data['team_name'] == team]['player_name'].unique())
+    # Get all match IDs
+    match_ids = matches['match_id'].tolist()
 
-    # Display player profile
-    st.title(f"{player}'s Performance")
-    st.write(f"Team: {team} | League: {league}")
+    # Fetch events for each match and combine into a single DataFrame
+    events_list = [sb.events(match_id=match_id) for match_id in match_ids]
+    events = pd.concat(events_list, ignore_index=True)
 
-    # Radar Plot: Position-Specific Skills
-    st.header("Position-Specific Radar Plot")
-    position = data[data['player_name'] == player]['position'].iloc[0]
-    st.write(f"Position: {position}")
+    # Select relevant columns and preprocess
+    relevant_columns = ['match_id', 'team', 'player', 'type', 'x', 'y', 'outcome', 'pass_end_x', 'pass_end_y']
+    events = events[relevant_columns]
 
-    # Define radar plot stats by position
-    radar_stats = {
-        "Forward": ["Goals Scored", "xG per 90", "Shots on Target %", "Dribbles Completed", "Key Passes"],
-        "Midfielder": ["Pass Completion %", "Progressive Carries", "xA", "Duels Won", "Interceptions"],
-        "Defender": ["Clearances", "Aerial Duels Won", "Interceptions", "Blocks", "Tackles Won"],
-        "Goalkeeper": ["Saves %", "Clean Sheets", "Goals Prevented", "Distribution Accuracy", "xG Against"],
-    }
-    radar_traits = radar_stats.get(position, [])
+    return events, matches
 
-    # Generate radar data
-    radar_values = [data[data['player_name'] == player][trait].iloc[0] for trait in radar_traits]
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=radar_values,
-        theta=radar_traits,
-        fill='toself',
-        name=player
-    ))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])))
-    st.plotly_chart(fig)
+# Fetch data
+events_data, matches_data = fetch_and_preprocess_data()
 
-    # Percentile Rankings
-    st.header("Overall Percentile Rankings")
-    percentile_traits = ["Passing Accuracy", "Progressive Passes", "Key Passes", "Tackles Won", "Interceptions"]
-    st.write("Percentiles for both offensive and defensive skills:")
-    for trait in percentile_traits:
-        value = data[data['player_name'] == player][trait].iloc[0]
-        st.write(f"### {trait}: {value}")
-        st.progress(int(value))
-else:
-    st.error("The app cannot load data. Please check the file path and try again.")
+# Sidebar filters
+st.sidebar.header("Filters")
+teams = events_data['team'].unique()
+selected_team = st.sidebar.selectbox("Select Team", teams)
+
+players = events_data[events_data['team'] == selected_team]['player'].unique()
+selected_player = st.sidebar.selectbox("Select Player", players)
+
+# Display Player Profile
+st.title(f"{selected_player}'s Performance")
+st.write(f"Team: {selected_team}")
+
+# Position-Specific Radar Plot
+st.header("Radar Plot")
+position_skills = ["pass_end_x", "pass_end_y", "x", "y"]  # Replace with relevant skills
+
+# Generate Radar Data
+player_data = events_data[events_data['player'] == selected_player]
+average_skills = [player_data[col].mean() for col in position_skills]
+
+fig = go.Figure()
+fig.add_trace(go.Scatterpolar(
+    r=average_skills,
+    theta=position_skills,
+    fill='toself',
+    name=selected_player
+))
+fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])))
+st.plotly_chart(fig)
+
+# Percentile Rankings
+st.header("Percentile Rankings")
+percentile_skills = ["x", "y", "pass_end_x", "pass_end_y"]  # Replace with relevant stats
+for skill in percentile_skills:
+    value = player_data[skill].mean()
+    st.write(f"### {skill}: {value:.2f}")
+    st.progress(int((value / 100) * 100))
