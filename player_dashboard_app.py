@@ -5,34 +5,32 @@ import plotly.graph_objects as go
 
 # Cache data to avoid repeated fetching
 @st.cache_data
-def fetch_and_preprocess_data():
+def fetch_and_preprocess_data(selected_competition, selected_season):
     # Fetch all competitions
     competitions = sb.competitions()
 
-    # Filter for Bundesliga 2023/2024
-    bundesliga = competitions[
-        (competitions['competition_name'] == 'Bundesliga') &
-        (competitions['season_name'] == '2023/2024')
+    # Filter for the selected competition and season
+    selected_data = competitions[
+        (competitions['competition_name'] == selected_competition) &
+        (competitions['season_name'] == selected_season)
     ]
 
-    if bundesliga.empty:
-        st.error("No data found for Bundesliga 2023/2024. Please verify competition and season availability.")
+    if selected_data.empty:
+        st.error(f"No data available for {selected_competition} {selected_season}.")
         return pd.DataFrame(), pd.DataFrame()
 
-    competition_id = bundesliga['competition_id'].iloc[0]
-    season_id = bundesliga['season_id'].iloc[0]
+    competition_id = selected_data['competition_id'].iloc[0]
+    season_id = selected_data['season_id'].iloc[0]
 
-    # Fetch matches for the Bundesliga 2023/2024 season
+    # Fetch matches
     matches = sb.matches(competition_id=competition_id, season_id=season_id)
 
     if matches.empty:
-        st.error("No match data found for Bundesliga 2023/2024.")
+        st.error("No match data found.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # Get all match IDs
+    # Fetch events for all matches
     match_ids = matches['match_id'].tolist()
-
-    # Fetch events for each match and combine into a single DataFrame
     events_list = []
     for match_id in match_ids:
         try:
@@ -42,24 +40,33 @@ def fetch_and_preprocess_data():
             st.warning(f"Could not fetch events for match {match_id}: {e}")
 
     if not events_list:
-        st.error("No event data available for the selected matches.")
+        st.error("No event data available.")
         return pd.DataFrame(), matches
 
     events = pd.concat(events_list, ignore_index=True)
 
-    # Select relevant columns and preprocess
+    # Select relevant columns
     relevant_columns = ['match_id', 'team', 'player', 'type', 'x', 'y', 'outcome', 'pass_end_x', 'pass_end_y']
     events = events[relevant_columns]
 
     return events, matches
 
-# Fetch data
-events_data, matches_data = fetch_and_preprocess_data()
+# Sidebar: Select Competition and Season
+competitions = sb.competitions()
+available_competitions = competitions['competition_name'].unique()
+selected_competition = st.sidebar.selectbox("Select Competition", available_competitions)
 
-# App starts here
+available_seasons = competitions[competitions['competition_name'] == selected_competition]['season_name'].unique()
+selected_season = st.sidebar.selectbox("Select Season", available_seasons)
+
+# Fetch data based on selected competition and season
+events_data, matches_data = fetch_and_preprocess_data(selected_competition, selected_season)
+
+# App content
 if not events_data.empty and not matches_data.empty:
+    st.title(f"{selected_competition} {selected_season} Analysis")
+
     # Sidebar filters
-    st.sidebar.header("Filters")
     teams = events_data['team'].unique()
     selected_team = st.sidebar.selectbox("Select Team", teams)
 
@@ -72,7 +79,7 @@ if not events_data.empty and not matches_data.empty:
 
     # Position-Specific Radar Plot
     st.header("Radar Plot")
-    position_skills = ["x", "y", "pass_end_x", "pass_end_y"]  # Replace with relevant skills
+    position_skills = ["x", "y", "pass_end_x", "pass_end_y"]
 
     # Generate Radar Data
     player_data = events_data[events_data['player'] == selected_player]
@@ -90,7 +97,7 @@ if not events_data.empty and not matches_data.empty:
 
     # Percentile Rankings
     st.header("Percentile Rankings")
-    percentile_skills = ["x", "y", "pass_end_x", "pass_end_y"]  # Replace with relevant stats
+    percentile_skills = ["x", "y", "pass_end_x", "pass_end_y"]
     for skill in percentile_skills:
         value = player_data[skill].mean()
         st.write(f"### {skill}: {value:.2f}")
