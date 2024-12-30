@@ -3,10 +3,13 @@ import streamlit as st
 from statsbombpy import sb
 import plotly.graph_objects as go
 
+# Cache data to avoid repeated fetching
 @st.cache_data
 def fetch_and_preprocess_data(selected_competition, selected_season):
+    # Fetch all competitions
     competitions = sb.competitions()
 
+    # Filter for the selected competition and season
     selected_data = competitions[
         (competitions['competition_name'] == selected_competition) &
         (competitions['season_name'] == selected_season)
@@ -19,12 +22,14 @@ def fetch_and_preprocess_data(selected_competition, selected_season):
     competition_id = selected_data['competition_id'].iloc[0]
     season_id = selected_data['season_id'].iloc[0]
 
+    # Fetch matches
     matches = sb.matches(competition_id=competition_id, season_id=season_id)
 
     if matches.empty:
         st.error("No match data found.")
         return pd.DataFrame(), pd.DataFrame()
 
+    # Fetch events for all matches
     match_ids = matches['match_id'].tolist()
     events_list = []
     for match_id in match_ids:
@@ -40,14 +45,9 @@ def fetch_and_preprocess_data(selected_competition, selected_season):
 
     events = pd.concat(events_list, ignore_index=True)
 
+    # Select relevant columns
     relevant_columns = ['match_id', 'team', 'player', 'type', 'x', 'y', 'outcome', 'pass_end_x', 'pass_end_y']
-    available_columns = [col for col in relevant_columns if col in events.columns]
-    missing_columns = [col for col in relevant_columns if col not in events.columns]
-
-    if missing_columns:
-        st.warning(f"The following columns are missing: {missing_columns}")
-
-    events = events[available_columns]
+    events = events[relevant_columns]
 
     return events, matches
 
@@ -59,23 +59,29 @@ selected_competition = st.sidebar.selectbox("Select Competition", available_comp
 available_seasons = competitions[competitions['competition_name'] == selected_competition]['season_name'].unique()
 selected_season = st.sidebar.selectbox("Select Season", available_seasons)
 
+# Fetch data based on selected competition and season
 events_data, matches_data = fetch_and_preprocess_data(selected_competition, selected_season)
 
+# App content
 if not events_data.empty and not matches_data.empty:
     st.title(f"{selected_competition} {selected_season} Analysis")
 
+    # Sidebar filters
     teams = events_data['team'].unique()
     selected_team = st.sidebar.selectbox("Select Team", teams)
 
     players = events_data[events_data['team'] == selected_team]['player'].unique()
     selected_player = st.sidebar.selectbox("Select Player", players)
 
+    # Display Player Profile
     st.title(f"{selected_player}'s Performance")
     st.write(f"Team: {selected_team}")
 
+    # Position-Specific Radar Plot
     st.header("Radar Plot")
     position_skills = ["x", "y", "pass_end_x", "pass_end_y"]
 
+    # Generate Radar Data
     player_data = events_data[events_data['player'] == selected_player]
     average_skills = [player_data[col].mean() for col in position_skills]
 
@@ -89,6 +95,7 @@ if not events_data.empty and not matches_data.empty:
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])))
     st.plotly_chart(fig)
 
+    # Percentile Rankings
     st.header("Percentile Rankings")
     percentile_skills = ["x", "y", "pass_end_x", "pass_end_y"]
     for skill in percentile_skills:
