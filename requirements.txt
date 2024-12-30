@@ -3,3 +3,4 @@ statsbombpy
 mplsoccer
 streamlit
 matplotlib
+plotly.graph_objects
